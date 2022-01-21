@@ -63,7 +63,7 @@ using namespace GlobalNamespace;
 
 ScoreDetailsConfig ScoreDetails::config;
 
-static ModInfo modInfo; // Stores the ID and version of our mod, and is sent to the modloader upon startup
+ModInfo modInfo; // Stores the ID and version of our mod, and is sent to the modloader upon startup
 
 // Loads the config from disk using our modInfo, then returns it for use
 Configuration& getConfig() {
@@ -174,16 +174,6 @@ static double calculatePercentage(int maxScore, int resultScore)
 {
     double resultPercentage = (double)(100 / (double)maxScore * (double)resultScore);
     return resultPercentage;
-}
-
-static std::string quickTestThing(std::string numText){
-    std::string newString = numText;
-    int n = newString.length() - 1;
-    while (n > 0) {
-        newString.insert(n, " ");
-        n -= 1;
-    }
-    return newString;
 }
 
 struct MultiplayerMapData{

@@ -27,111 +27,80 @@ std::optional<bool> setBool(Value& obj, std::string_view fieldName, bool value, 
 }
 
 void ConfigHelper::AddBeatMap(MemoryPoolAllocator<>& allocator, Value& obj, std::string mapID, std::string diff, int missCount, int badCutCount, int pauseCount, std::string datePlayed) {
-    auto itr = obj.FindMember("beatMaps");
     Value v(kObjectType);
-    v.AddMember("mapID", mapID, allocator);
-    Document::ValueType difficulty(kObjectType);
-    Document::ValueType diffArr(kArrayType);
-    difficulty.AddMember("diffType", diff, allocator);
-    difficulty.AddMember("missCount", missCount, allocator);
-    difficulty.AddMember("badCutCount", badCutCount, allocator);
-    difficulty.AddMember("pauseCount", pauseCount, allocator);
-    difficulty.AddMember("datePlayed", datePlayed, allocator);
-    diffArr.PushBack(difficulty, allocator);
-    v.AddMember("difficulties", diffArr, allocator);
-    itr->value.PushBack(v, allocator);
-    getConfig().Write();
+
+    char buffer[60]; int len = sprintf(buffer, "%s", mapID.c_str());
+    Document::ValueType string(kStringType);
+    string.SetString(buffer, len, allocator);
+
+    char diffType[20]; int len2 = sprintf(diffType, "%s", diff.c_str());
+    Document::ValueType string2(kStringType);
+    string2.SetString(diffType, len2, allocator);
+
+    Document::ValueType diffArr(kObjectType);
+    diffArr.AddMember("missCount", missCount, allocator);
+    diffArr.AddMember("badCutCount", badCutCount, allocator);
+    diffArr.AddMember("pauseCount", pauseCount, allocator);
+    diffArr.AddMember("datePlayed", datePlayed, allocator);
+    v.AddMember(string2, diffArr, allocator);
+    obj.AddMember(string, v, allocator);
+    WriteFile();
 }
 
 void ConfigHelper::UpdateBeatMapInfo(std::string mapID, std::string diff, int missCount, int badCutCount, int pauseCount, std::string datePlayed){
-    MemoryPoolAllocator<>& allocator = getConfig().config.GetAllocator();
-    Value& obj = getConfig().config;
-    auto [missCountValue, badCutCountValue, pauseCountValue, datePlayedValue, itr2, mapFound, diffFound] = ConfigHelper::getMapStuff(mapID, diff);
-    if (diffFound){
-        missCountValue->value.SetInt(missCount);
-        badCutCountValue->value.SetInt(badCutCount);
-        pauseCountValue->value.SetInt(pauseCount);
-        char buffer[30]; int len = sprintf(buffer, "%s", datePlayed.c_str());
-        datePlayedValue->value.SetString(buffer, len, allocator);
-        getConfig().Write(); 
+    MemoryPoolAllocator<>& allocator = ScoreDetails::config.beatMapData.GetAllocator();
+    Value& obj = ScoreDetails::config.beatMapData;
+    auto itr = obj.FindMember(mapID);
+    if (itr != obj.MemberEnd()){
+        auto itr2 = itr->value.GetObject().FindMember(diff);
+        if (itr2 != itr->value.GetObject().MemberEnd()){
+            itr2->value.GetObject().FindMember("missCount")->value.SetInt(missCount);
+            itr2->value.GetObject().FindMember("badCutCount")->value.SetInt(badCutCount);
+            itr2->value.GetObject().FindMember("pauseCount")->value.SetInt(pauseCount);
+            char buffer[30]; int len = sprintf(buffer, "%s", datePlayed.c_str());
+            itr2->value.GetObject().FindMember("datePlayed")->value.SetString(buffer, len, allocator);
+            WriteFile();
+        }
+        else{
+            Document::ValueType difficulty(kObjectType);
+            difficulty.AddMember("missCount", missCount, allocator);
+            difficulty.AddMember("badCutCount", badCutCount, allocator);
+            difficulty.AddMember("pauseCount", pauseCount, allocator);
+            difficulty.AddMember("datePlayed", datePlayed, allocator);
+            char diffType[20]; int len2 = sprintf(diffType, "%s", diff.c_str());
+            Document::ValueType string2(kStringType);
+            string2.SetString(diffType, len2, allocator);
+            itr->value.AddMember(string2, difficulty, allocator);
+            WriteFile();
+        }
     }
-    else if (!diffFound && mapFound){
-        Document::ValueType difficulty(kObjectType);
-        difficulty.AddMember("diffType", diff, allocator);
-        difficulty.AddMember("missCount", missCount, allocator);
-        difficulty.AddMember("badCutCount", badCutCount, allocator);
-        difficulty.AddMember("pauseCount", pauseCount, allocator);
-        difficulty.AddMember("datePlayed", datePlayed, allocator);
-        itr2->value.PushBack(difficulty, allocator);
-        getConfig().Write();
-    }
-    else if (!mapFound) AddBeatMap(allocator, obj, mapID, diff, missCount, badCutCount, pauseCount, datePlayed);
+    else AddBeatMap(allocator, obj, mapID, diff, missCount, badCutCount, pauseCount, datePlayed);
 }
 
 void ConfigHelper::LoadBeatMapInfo(std::string mapID, std::string diff){    
-    auto [missCountValue, badCutCountValue, pauseCountValue, datePlayedValue, itr2, mapFound, diffFound] = ConfigHelper::getMapStuff(mapID, diff);
-    if (diffFound){
-        ScoreDetails::config.badCutCount = badCutCountValue->value.GetInt();
-        ScoreDetails::config.missCount = missCountValue->value.GetInt();
-        ScoreDetails::config.pauseCount = pauseCountValue->value.GetInt();
-        ScoreDetails::config.datePlayed = datePlayedValue->value.GetString();
+    MemoryPoolAllocator<>& allocator = ScoreDetails::config.beatMapData.GetAllocator();
+    Value& obj = ScoreDetails::config.beatMapData;
+    auto itr = obj.FindMember(mapID);
+    if (itr != obj.MemberEnd()){
+        auto itr2 = itr->value.GetObject().FindMember(diff);
+        if (itr2 != itr->value.GetObject().MemberEnd()){
+            ScoreDetails::config.badCutCount = itr2->value.GetObject().FindMember("badCutCount")->value.GetInt();
+            ScoreDetails::config.missCount = itr2->value.GetObject().FindMember("missCount")->value.GetInt();
+            ScoreDetails::config.pauseCount = itr2->value.GetObject().FindMember("pauseCount")->value.GetInt();
+            ScoreDetails::config.datePlayed = itr2->value.GetObject().FindMember("datePlayed")->value.GetString();
+            return;
+        }
     }
-    else{
-        ScoreDetails::config.badCutCount = -1;
-        ScoreDetails::config.missCount = -1;
-        ScoreDetails::config.pauseCount = -1;
-        ScoreDetails::config.datePlayed = "";
-    }
-}
-
-std::tuple<GenericMemberIterator<false, UTF8<>, MemoryPoolAllocator<CrtAllocator>>,
-GenericMemberIterator<false, UTF8<>, MemoryPoolAllocator<CrtAllocator>>, 
-GenericMemberIterator<false, UTF8<>, MemoryPoolAllocator<CrtAllocator>>, 
-GenericMemberIterator<false, UTF8<>, MemoryPoolAllocator<CrtAllocator>>,
-GenericMemberIterator<false, UTF8<>, MemoryPoolAllocator<CrtAllocator>>, bool, bool> 
-ConfigHelper::getMapStuff(std::string mapID, std::string diff){
-    MemoryPoolAllocator<>& allocator = getConfig().config.GetAllocator();
-    Value& obj = getConfig().config;
-    GenericMemberIterator<false, UTF8<>, MemoryPoolAllocator<CrtAllocator>> missCountValue, badCutCountValue, itr2, pauseCountValue, datePlayedValue;
-    auto locateMaps = obj.FindMember("beatMaps");
-    auto arr = locateMaps->value.GetArray();
-    auto size = arr.Size();
-    bool mapFound = false;
-    bool diffFound = false;
-    for (int i = 0; i < size; i++) {
-        auto itr = arr[i].FindMember("mapID");
-        std::string value = itr->value.GetString();
-        if (value.compare(mapID) == 0){
-            mapFound = true;
-            itr2 = arr[i].FindMember("difficulties");
-            auto arr2 = itr2->value.GetArray();
-            auto size2 = arr2.Size();
-            for (int i2 = 0; i2 < size2; i2++) {
-                auto itr3 = arr2[i2].FindMember("diffType");
-                std::string diffValue = itr3->value.GetString();
-                if (diffValue.compare(diff) == 0){
-                    diffFound = true;
-                    missCountValue = arr2[i2].FindMember("missCount");
-                    badCutCountValue = arr2[i2].FindMember("badCutCount");
-                    pauseCountValue = arr2[i2].FindMember("pauseCount");
-                    datePlayedValue = arr2[i2].FindMember("datePlayed");
-                    break;
-                } 
-            }
-            break;
-        } 
-    }
-    if (!mapFound) itr2 = obj.FindMember("beatMaps");
-    if (!mapFound || !diffFound){
-        missCountValue = obj.FindMember("beatMaps"); badCutCountValue = obj.FindMember("beatMaps");
-        pauseCountValue = obj.FindMember("beatMaps"); datePlayedValue = obj.FindMember("beatMaps");
-    }
-    return  std::make_tuple(missCountValue, badCutCountValue, pauseCountValue, datePlayedValue, itr2, mapFound, diffFound);
+    ScoreDetails::config.badCutCount = -1;
+    ScoreDetails::config.missCount = -1;
+    ScoreDetails::config.pauseCount = -1;
+    ScoreDetails::config.datePlayed = "";
 }
 
 bool ConfigHelper::LoadConfig(ScoreDetailsConfig& con, ConfigDocument& config) {
     if (!config.HasMember("Menu Highscore Percentage")) ConfigHelper::CreateDefaultConfig(config);
-    // ConfigHelper::UpdateOldConfig(config);
+    ConfigHelper::LoadBeatMapDataFile();
+    if (config.HasMember("beatMaps")) ConfigHelper::UpdateOldConfig(config);
     con.MenuHighScore = getBool(config, "Menu Highscore Percentage").value_or(false);
     con.LevelEndRank = getBool(config, "Level End Rank Display").value_or(false);
     con.missDifference = getBool(config, "Average Cut Score").value_or(false);
@@ -164,25 +133,67 @@ void ConfigHelper::CreateDefaultConfig(ConfigDocument& config){
     config.AddMember("uiBadCutCount", true, config.GetAllocator());
     config.AddMember("uiPauseCount", true, config.GetAllocator());
     config.AddMember("uiDatePlayed", true, config.GetAllocator());
-    Document::ValueType beatMapArr(kArrayType);
-    config.AddMember("beatMaps", beatMapArr, config.GetAllocator());
     getConfig().Write();
 }
 
 void ConfigHelper::UpdateOldConfig(ConfigDocument& config){
-    Value& obj = getConfig().config;
-    auto locateMaps = obj.FindMember("beatMaps");
+    MemoryPoolAllocator<>& allocator = ScoreDetails::config.beatMapData.GetAllocator();
+    auto locateMaps = config.FindMember("beatMaps");
     auto arr = locateMaps->value.GetArray();
     auto size = arr.Size();
     for (int i = 0; i < size; i++) {
+        std::string mapID = arr[i].FindMember("mapID")->value.GetString();
         auto itr = arr[i].FindMember("difficulties");
         auto arr2 = itr->value.GetArray();
         auto size2 = arr2.Size();
+
+        Value v(kObjectType);
+        char buffer[60]; int len = sprintf(buffer, "%s", mapID.c_str());
+        Document::ValueType string(kStringType);
+        string.SetString(buffer, len, allocator);
+
         for (int i2 = 0; i2 < size2; i2++) {
-            auto diffType = arr2[i2].FindMember("diffType");
-            char buffer[5]; int len = sprintf(buffer, "%s", std::to_string(diffType->value.GetInt()).c_str());
-            diffType->value.SetString(buffer, len, config.GetAllocator());
+            std::string diff = arr2[i2].FindMember("diffType")->value.GetString();
+
+            char diffType[20]; int len2 = sprintf(diffType, "%s", diff.c_str());
+            Document::ValueType string2(kStringType);
+            string2.SetString(diffType, len2, allocator);
+            arr2[i2].EraseMember("diffType");
+            v.AddMember(string2, arr2[i2], allocator);
+        }
+        ScoreDetails::config.beatMapData.AddMember(string, v, allocator);
+    }
+    WriteFile();
+    config.EraseMember("beatMaps");
+    getConfig().Write();
+}
+
+void ConfigHelper::LoadBeatMapDataFile(){
+    std::string dir = getDataDir(modInfo);
+    std::string file = dir + "beatMapData.json";
+
+    if(!direxists(dir)) {
+        int made = mkpath(dir);
+        if(made < 0) {
+            getLogger().info("Failed to make data directory");
+            return;
         }
     }
-    getConfig().Write();
+    if(!fileexists(file)) writefile(file, "{}");
+    ConfigDocument d;
+    if(!parsejsonfile(d, file)) {
+        getLogger().info("Failed to read file");
+        return;
+    }
+    ScoreDetails::config.beatMapData.Swap(d);
+}
+
+void ConfigHelper::WriteFile(){
+    std::string dir = getDataDir(modInfo);
+    std::string file = dir + "beatMapData.json";
+    rapidjson::StringBuffer buffer;
+    rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+    ScoreDetails::config.beatMapData.Accept(writer);
+    std::string s = buffer.GetString();
+    writefile(file, s);
 }

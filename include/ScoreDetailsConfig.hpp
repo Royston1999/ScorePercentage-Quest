@@ -28,6 +28,8 @@ std::optional<bool> setBool(rapidjson::Value& obj, std::string_view fieldName,  
 
 class ScoreDetailsConfig {
 public:
+    ConfigDocument beatMapData;
+
     bool MenuHighScore;
     bool LevelEndRank;
     bool missDifference;
@@ -54,6 +56,8 @@ public:
     static void LoadBeatMapInfo(std::string mapID, std::string diff);
     static void CreateDefaultConfig(ConfigDocument& config);
     static void UpdateOldConfig(ConfigDocument& config);
+    static void LoadBeatMapDataFile();
+    static void WriteFile();
     static std::tuple<rapidjson::GenericMemberIterator<false, rapidjson::UTF8<>, rapidjson::MemoryPoolAllocator<rapidjson::CrtAllocator>>,
     rapidjson::GenericMemberIterator<false, rapidjson::UTF8<>, rapidjson::MemoryPoolAllocator<rapidjson::CrtAllocator>>, 
     rapidjson::GenericMemberIterator<false, rapidjson::UTF8<>, rapidjson::MemoryPoolAllocator<rapidjson::CrtAllocator>>, 
