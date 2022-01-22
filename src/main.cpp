@@ -411,8 +411,8 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
     }
 }
 
-MAKE_HOOK_MATCH(test, &ResultsTableCell::SetData, void, ResultsTableCell* self, int order, IConnectedPlayer* connectedPlayer, LevelCompletionResults* levelCompletionResults){
-    test(self, order, connectedPlayer, levelCompletionResults);
+MAKE_HOOK_MATCH(MultiplayerResults, &ResultsTableCell::SetData, void, ResultsTableCell* self, int order, IConnectedPlayer* connectedPlayer, LevelCompletionResults* levelCompletionResults){
+    MultiplayerResults(self, order, connectedPlayer, levelCompletionResults);
 
     if (!self->rankText->get_richText()){
             self->rankText->set_enableWordWrapping(false);
@@ -484,7 +484,7 @@ extern "C" void load() {
     // Install our hooks (none defined yet)
     INSTALL_HOOK(getLogger(), Menu);
     INSTALL_HOOK(getLogger(), Results);
-    INSTALL_HOOK(getLogger(), test);
+    INSTALL_HOOK(getLogger(), MultiplayerResults);
     INSTALL_HOOK(getLogger(), Pause);
     INSTALL_HOOK(getLogger(), PPTime);
     INSTALL_HOOK(getLogger(), MenuTransitionsHelper_StartStandardLevel);

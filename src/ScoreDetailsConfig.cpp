@@ -2,14 +2,6 @@
 #include "ScoreDetailsConfig.hpp"
 #include "main.hpp"
 
-#define GET(obj, fieldName, method, required) auto itr = obj.FindMember(fieldName.data()); \
-if (itr == obj.MemberEnd()) { \
-    if (required) { \
-    } \
-    return std::nullopt; \
-} \
-return itr->value.method()
-
 using namespace rapidjson;
 
 std::optional<bool> getBool(Value& obj, std::string_view fieldName, bool required) {
@@ -182,7 +174,7 @@ void ConfigHelper::LoadBeatMapDataFile(){
     if(!fileexists(file)) writefile(file, "{}");
     ConfigDocument d;
     if(!parsejsonfile(d, file)) {
-        getLogger().info("Failed to read file");
+        getLogger().info("Failed to read map data");
         return;
     }
     ScoreDetails::config.beatMapData.Swap(d);

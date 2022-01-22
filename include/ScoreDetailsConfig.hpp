@@ -23,6 +23,15 @@
 #include "config-utils/shared/config-utils.hpp"
 #include "UnityEngine/Color.hpp"
 
+#define GET(obj, fieldName, method, required) auto itr = obj.FindMember(fieldName.data()); \
+if (itr == obj.MemberEnd()) { \
+    if (required) { \
+    } \
+    return std::nullopt; \
+} \
+return itr->value.method()
+
+
 std::optional<bool> getBool(rapidjson::Value& obj, std::string_view fieldName, bool required = false);
 std::optional<bool> setBool(rapidjson::Value& obj, std::string_view fieldName,  bool value, bool required = false);
 
@@ -58,10 +67,4 @@ public:
     static void UpdateOldConfig(ConfigDocument& config);
     static void LoadBeatMapDataFile();
     static void WriteFile();
-    static std::tuple<rapidjson::GenericMemberIterator<false, rapidjson::UTF8<>, rapidjson::MemoryPoolAllocator<rapidjson::CrtAllocator>>,
-    rapidjson::GenericMemberIterator<false, rapidjson::UTF8<>, rapidjson::MemoryPoolAllocator<rapidjson::CrtAllocator>>, 
-    rapidjson::GenericMemberIterator<false, rapidjson::UTF8<>, rapidjson::MemoryPoolAllocator<rapidjson::CrtAllocator>>, 
-    rapidjson::GenericMemberIterator<false, rapidjson::UTF8<>, rapidjson::MemoryPoolAllocator<rapidjson::CrtAllocator>>,
-    rapidjson::GenericMemberIterator<false, rapidjson::UTF8<>, rapidjson::MemoryPoolAllocator<rapidjson::CrtAllocator>>, 
-    bool, bool> getMapStuff(std::string mapID, std::string diff);
 };
