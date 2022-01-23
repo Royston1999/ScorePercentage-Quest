@@ -55,11 +55,14 @@
 #include "GlobalNamespace/IConnectedPlayer.hpp"
 #include "GlobalNamespace/PlayerDataModel.hpp"
 #include "GlobalNamespace/GameplayModifiers.hpp"
+#include "ScoreDetailsModal.hpp"
+#include "ScoreUtils.hpp"
 
 using namespace QuestUI::BeatSaberUI;
 using namespace UnityEngine::UI;
 using namespace UnityEngine;
 using namespace GlobalNamespace;
+using namespace ScorePercentage::Utils;
 
 ScoreDetailsConfig ScoreDetails::config;
 
@@ -93,122 +96,23 @@ void ScoreDetails::loadConfig() {
     ConfigHelper::LoadConfig(config, getConfig().config);
 }
 
-static std::string Round (float val, int precision)
-{
-	std::stringstream stream;
-    stream << std::fixed << std::setprecision(precision) << val;
-    std::string Out = stream.str();
-	return Out;
-}
-
 int currentScore = 0;
 int multiCurrentScore = 0;
 double currentPercentage = 0;
-HMUI::ModalView* screen = nullptr;
-UnityEngine::UI::GridLayoutGroup* buttonHolder = nullptr;
+ScorePercentage::ModalPopup* scoreDetailsUI = nullptr;
 std::string mapID = "";
 std::string mapType = "";
 std::string idString = "";
-TMPro::TextMeshProUGUI* score;
-TMPro::TextMeshProUGUI* maxCombo;
-TMPro::TextMeshProUGUI* playCount;
-TMPro::TextMeshProUGUI* missCount;
-TMPro::TextMeshProUGUI* badCutCount;
-TMPro::TextMeshProUGUI* pauseCountGUI;
-TMPro::TextMeshProUGUI* datePlayed;
-std::string scoreText;
-std::string maxComboText;
-std::string playCountText;
-std::string missCountText;
-std::string badCutCountText;
-std::string pauseCountText;
-std::string datePlayedText;
 std::string statsButtonText = "VIEW SCORE DETAILS";
-std::string testThingy = "";
-UnityEngine::UI::Button* statsButton;
-Array<TMPro::TextMeshProUGUI*>* levelStatsComponents;
 int pauseCount = 0;
-std::string colorPositive = "<color=#00B300>";
-std::string colorNegative = "<color=#FF0000>";
-std::string colorNoMiss = "<color=#05BCFF>";
-std::string ppColour = "<color=#5968BB>";
 int totalUIText = 0;
 bool ScoreDetails::modalSettingsChanged = false;
 int multiLevelMaxScore = 0;
-
-static int calculateMaxScore(int blockCount)
-{
-    int maxScore;
-    if(blockCount < 14)
-    {
-        if (blockCount == 1)
-            maxScore = 115;
-        else if (blockCount < 5)
-            maxScore = (blockCount - 1) * 230 + 115;
-        else
-            maxScore = (blockCount - 5) * 460 + 1035;
-    }
-    else
-        maxScore = (blockCount - 13) * 920 + 4715;
-    return maxScore;
-}
-
-static std::string valueDifferenceString(float valueDifference){
-    std::string differenceColor, positiveIndicator;
-    //Better or same Score
-    if (valueDifference >= 0)
-    {
-        differenceColor = colorPositive;
-        positiveIndicator = "+";
-    }
-    //Worse Score
-    else
-    {
-        differenceColor = colorNegative;
-        positiveIndicator = "";
-    }
-    return differenceColor + positiveIndicator + (ceilf(valueDifference) != valueDifference ? Round(valueDifference, 2) : Round(valueDifference, 0));
-}
-
-static double calculatePercentage(int maxScore, int resultScore)
-{
-    double resultPercentage = (double)(100 / (double)maxScore * (double)resultScore);
-    return resultPercentage;
-}
 
 struct MultiplayerMapData{
     IDifficultyBeatmap* beatmap;
     PlayerLevelStatsData* statsdata;
 } multiplayerMapData;
-
-void initScoreDetailsUI(LevelStatsView* self){
-    totalUIText = ScoreDetails::config.uiPlayCount + ScoreDetails::config.uiMissCount + ScoreDetails::config.uiBadCutCount + ScoreDetails::config.uiPauseCount + ScoreDetails::config.uiDatePlayed;
-    if (screen!=nullptr) GameObject::Destroy(screen->get_gameObject());
-    if (buttonHolder!=nullptr) GameObject::Destroy(buttonHolder->get_gameObject());
-    // 55
-    int x = 25 + (6 * totalUIText);
-    screen = CreateModal(self->get_transform(), UnityEngine::Vector2(60, x), [](HMUI::ModalView *modal) {}, true);
-    VerticalLayoutGroup* list = CreateVerticalLayoutGroup(screen->get_transform());
-    list->set_spacing(-1.0f);
-    list->set_padding(UnityEngine::RectOffset::New_ctor(7, 0, 10, 1));
-    list->set_childForceExpandWidth(true);
-    list->set_childControlWidth(false);
-    // 21
-    int y = 6 + (3 * totalUIText);
-    auto* details = CreateText(screen->get_transform(), "<size=150%>SCORE DETAILS</size>", UnityEngine::Vector2(13, y));
-    score = CreateText(list->get_transform(), "");
-    maxCombo = CreateText(list->get_transform(), "");
-    if (ScoreDetails::config.uiPlayCount) playCount = CreateText(list->get_transform(), "");
-    if (ScoreDetails::config.uiMissCount) missCount = CreateText(list->get_transform(), "");
-    if (ScoreDetails::config.uiBadCutCount) badCutCount = CreateText(list->get_transform(), "");
-    if (ScoreDetails::config.uiPauseCount) pauseCountGUI = CreateText(list->get_transform(), "");
-    if (ScoreDetails::config.uiDatePlayed) datePlayed = CreateText(list->get_transform(), "");
-    buttonHolder = CreateGridLayoutGroup(self->get_transform());
-    buttonHolder->set_cellSize({70.0f, 10.0f});
-    statsButton = CreateUIButton(buttonHolder->get_transform(), statsButtonText, "PracticeButton", {0, 0}, {70.0f, 10.0f}, [](){
-        screen->Show(true, true, nullptr);
-    });
-}
 
 MAKE_HOOK_MATCH(MenuTransitionsHelper_StartStandardLevel, static_cast<void (MenuTransitionsHelper::*)(Il2CppString* gameMode,
     IDifficultyBeatmap* difficultyBeatmap,
@@ -251,7 +155,7 @@ MAKE_HOOK_MATCH(MenuTransitionsHelper_StartStandardLevel, static_cast<void (Menu
         beforeSceneSwitchCallback,
         levelFinishedCallback);
 
-    if (screen != nullptr) if (screen->get_gameObject() != nullptr && screen->isShown) screen->Hide(true, nullptr);
+    scoreDetailsUI->Hide(true, nullptr);
 }
 
 MAKE_HOOK_MATCH(Menu, &LevelStatsView::ShowStats, void, LevelStatsView* self, IDifficultyBeatmap* difficultyBeatmap, PlayerData* playerData) {
@@ -259,26 +163,19 @@ MAKE_HOOK_MATCH(Menu, &LevelStatsView::ShowStats, void, LevelStatsView* self, ID
     pauseCount = 0;
     if (playerData != nullptr)
     {
-        if((screen == nullptr && buttonHolder == nullptr) || ScoreDetails::modalSettingsChanged){
-            initScoreDetailsUI(self);
-            ScoreDetails::modalSettingsChanged = false;
+        if (scoreDetailsUI == nullptr || ScoreDetails::modalSettingsChanged){
+            UnityEngine::GameObject::Destroy(scoreDetailsUI);
+            scoreDetailsUI = ScorePercentage::ModalPopup::CreatePopupModal(self->get_transform());
         }
-        levelStatsComponents = self->get_transform()->GetComponentsInChildren<TMPro::TextMeshProUGUI*>();
+
+        auto* levelStatsComponents = self->get_transform()->GetComponentsInChildren<TMPro::TextMeshProUGUI*>();
         GlobalNamespace::PlayerLevelStatsData* playerLevelStatsData = playerData->GetPlayerLevelStatsData(difficultyBeatmap);
         currentScore = playerLevelStatsData->highScore;
         mapID = to_utf8(csstrtostr(playerLevelStatsData->get_levelID()));
         mapType = to_utf8(csstrtostr(playerLevelStatsData->get_beatmapCharacteristic()->get_serializedName()));
         if (playerLevelStatsData->validScore)
         {
-            //calculate maximum possilble score
-            int currentDifficultyMaxScore = calculateMaxScore(difficultyBeatmap->get_beatmapData()->cuttableNotesCount);
-
-            float maxPP = mapType.compare("Standard") == 0 ? PPCalculator::PP::BeatmapMaxPP(mapID, difficultyBeatmap->get_difficulty()) : -1;
-            float truePP = PPCalculator::PP::CalculatePP(maxPP, calculatePercentage(currentDifficultyMaxScore, playerLevelStatsData->highScore)/100);
-            
-            //calculate actual score percentage
-            double currentDifficultyPercentageScore = calculatePercentage(currentDifficultyMaxScore, playerLevelStatsData->highScore);
-            currentPercentage = currentDifficultyPercentageScore;
+            currentPercentage = calculatePercentage(calculateMaxScore(difficultyBeatmap->get_beatmapData()->cuttableNotesCount), playerLevelStatsData->highScore);
 
             if (mapType.compare("Standard") != 0) idString = mapType + std::to_string(difficultyBeatmap->get_difficultyRank());
             else idString = std::to_string(difficultyBeatmap->get_difficultyRank());
@@ -287,31 +184,13 @@ MAKE_HOOK_MATCH(Menu, &LevelStatsView::ShowStats, void, LevelStatsView* self, ID
             if (ScoreDetails::config.MenuHighScore)
             { 
                 for(int i=0; i<levelStatsComponents->get_Length(); i++) if (!(to_utf8(csstrtostr((*levelStatsComponents)[i]->get_text())).compare(statsButtonText)==0))(*levelStatsComponents)[i]->set_enabled(false);
-                buttonHolder->get_gameObject()->SetActive(true);
-                scoreText = "Score - " + to_utf8(csstrtostr(ScoreFormatter::Format(playerLevelStatsData->highScore))) + " (<color=#EBCD00>" + Round(currentDifficultyPercentageScore, 2) + "%</color>)" + ((maxPP != -1 && ScoreDetails::config.uiPP) ? " - (" + ppColour + Round(truePP, 2) + "<size=60%>pp</size></color>)" : "");
-                maxComboText = "Max Combo - " + (playerLevelStatsData->fullCombo ? "Full Combo" : std::to_string(playerLevelStatsData->maxCombo));
-                playCountText = "Play Count - " + std::to_string(playerLevelStatsData->playCount);
-                missCountText = "Miss Count - " + (ScoreDetails::config.missCount != -1 ? (ScoreDetails::config.missCount == 0 ? colorNoMiss : colorNegative) + std::to_string(ScoreDetails::config.missCount) : "N/A");
-                badCutCountText = "Bad Cut Count - " + (ScoreDetails::config.badCutCount != -1 ? (ScoreDetails::config.badCutCount == 0 ? colorNoMiss : colorNegative) + std::to_string(ScoreDetails::config.badCutCount) : "N/A");
-                pauseCountText = "Pause Count - " + (ScoreDetails::config.pauseCount != -1 ? (ScoreDetails::config.pauseCount == 0 ? colorNoMiss : colorNegative) + std::to_string(ScoreDetails::config.pauseCount) : "N/A");
-                datePlayedText = "Date Played - " + (ScoreDetails::config.datePlayed.compare("") != 0 ? ("<size=85%><line-height=75%>" + ScoreDetails::config.datePlayed) : "N/A");
-                score->SetText(il2cpp_utils::newcsstr(scoreText));
-                maxCombo->SetText(il2cpp_utils::newcsstr(maxComboText));
-                if (ScoreDetails::config.uiPlayCount) playCount->SetText(il2cpp_utils::newcsstr(playCountText));
-                if (ScoreDetails::config.uiMissCount) missCount->SetText(il2cpp_utils::newcsstr(missCountText));
-                if (ScoreDetails::config.uiBadCutCount) badCutCount->SetText(il2cpp_utils::newcsstr(badCutCountText));
-                if (ScoreDetails::config.uiPauseCount) pauseCountGUI->SetText(il2cpp_utils::newcsstr(pauseCountText));
-                if (ScoreDetails::config.uiDatePlayed) datePlayed->SetText(il2cpp_utils::newcsstr(datePlayedText));
-            }
-            else{
-                screen->Hide(true, nullptr);
-                buttonHolder->get_gameObject()->SetActive(false);
-                for(int i=0; i<levelStatsComponents->get_Length(); i++) (*levelStatsComponents)[i]->set_enabled(true);
+                scoreDetailsUI->openButton->get_gameObject()->SetActive(true);
+                scoreDetailsUI->updateInfo(playerLevelStatsData, difficultyBeatmap);
             }
         }
-        else{
-            screen->Hide(true, nullptr);
-            buttonHolder->get_gameObject()->SetActive(false);
+        if (!ScoreDetails::config.MenuHighScore || !playerLevelStatsData->validScore){
+            scoreDetailsUI->Hide(true, nullptr);
+            scoreDetailsUI->openButton->get_gameObject()->SetActive(false);
             for(int i=0; i<levelStatsComponents->get_Length(); i++) (*levelStatsComponents)[i]->set_enabled(true);
         }
     }
@@ -465,10 +344,8 @@ MAKE_HOOK_MATCH(PPTime, &MainMenuViewController::DidActivate, void, MainMenuView
 
 MAKE_HOOK_MATCH(MenuTransitionsHelper_RestartGame, &GlobalNamespace::MenuTransitionsHelper::RestartGame, void, GlobalNamespace::MenuTransitionsHelper* self, System::Action_1<Zenject::DiContainer*>* finishCallback)
 {
-    UnityEngine::GameObject::Destroy(screen);
-    UnityEngine::GameObject::Destroy(buttonHolder);
-    screen = nullptr;
-    buttonHolder = nullptr;
+    UnityEngine::GameObject::Destroy(scoreDetailsUI);
+    scoreDetailsUI = nullptr;
     MenuTransitionsHelper_RestartGame(self, finishCallback);
 }
 
