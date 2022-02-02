@@ -6,40 +6,46 @@ using namespace UnityEngine::UI;
 using namespace GlobalNamespace;
 using namespace ScorePercentage::Utils;
 
-DEFINE_TYPE(ScorePercentage, ModalPopup);
-
-ScorePercentage::ModalPopup* ScorePercentage::ModalPopup::CreatePopupModal(UnityEngine::Transform* parent){
-    int totalUIText = ScoreDetails::config.uiPlayCount + ScoreDetails::config.uiMissCount + ScoreDetails::config.uiBadCutCount + ScoreDetails::config.uiPauseCount + ScoreDetails::config.uiDatePlayed;
+ScorePercentage::ModalPopup* ScorePercentage::CreatePopupModal(UnityEngine::Transform* parent, int totalUIText){
     // 55
     int x = 25 + (6 * totalUIText);
-    ScorePercentage::ModalPopup* modal = reinterpret_cast<ScorePercentage::ModalPopup*>(CreateModal(parent->get_transform(), UnityEngine::Vector2(60, x), [](HMUI::ModalView *modal) {}, true));
-    modal->initModal(totalUIText);
+    ScorePercentage::ModalPopup* modalUI = (ScorePercentage::ModalPopup*) malloc(sizeof(ScorePercentage::ModalPopup));
+    modalUI->modal = CreateModal(parent, UnityEngine::Vector2(60, x), [](HMUI::ModalView *modal) {}, true);
     ScoreDetails::modalSettingsChanged = false;
-    modal->Hide(false, nullptr);
-    return modal;
+    return modalUI;
 }
 
-void ScorePercentage::ModalPopup::initModal(int uiText){
-    list = CreateVerticalLayoutGroup(get_transform());
-    list->set_spacing(-1.0f);
-    list->set_padding(RectOffset::New_ctor(7, 0, 10, 1));
-    list->set_childForceExpandWidth(true);
-    list->set_childControlWidth(false);
+void ScorePercentage::initModalPopup(ScorePercentage::ModalPopup** modalUIPointer, Transform* parent){
+    auto modalUI = *modalUIPointer;
+    int uiText = ScoreDetails::config.uiPlayCount + ScoreDetails::config.uiMissCount + ScoreDetails::config.uiBadCutCount + ScoreDetails::config.uiPauseCount + ScoreDetails::config.uiDatePlayed;
+    if (modalUI != nullptr){
+        UnityEngine::GameObject::Destroy(modalUI->buttonHolder->get_gameObject());
+        UnityEngine::GameObject::Destroy(modalUI->modal->get_gameObject());
+        delete modalUI;
+    }
+    modalUI = CreatePopupModal(parent, uiText);
+    
+    modalUI->list = CreateVerticalLayoutGroup(modalUI->modal->get_transform());
+    modalUI->list->set_spacing(-1.0f);
+    modalUI->list->set_padding(RectOffset::New_ctor(7, 0, 10, 1));
+    modalUI->list->set_childForceExpandWidth(true);
+    modalUI->list->set_childControlWidth(false);
     // 21
     int y = 6 + (3 * uiText);
-    title = CreateText(get_transform(), "<size=150%>SCORE DETAILS</size>", UnityEngine::Vector2(14, y));
-    score = CreateText(list->get_transform(), "");
-    maxCombo = CreateText(list->get_transform(), "");
-    if (ScoreDetails::config.uiPlayCount) playCount = CreateText(list->get_transform(), "");
-    if (ScoreDetails::config.uiMissCount) missCount = CreateText(list->get_transform(), "");
-    if (ScoreDetails::config.uiBadCutCount) badCutCount = CreateText(list->get_transform(), "");
-    if (ScoreDetails::config.uiPauseCount) pauseCountGUI = CreateText(list->get_transform(), "");
-    if (ScoreDetails::config.uiDatePlayed) datePlayed = CreateText(list->get_transform(), "");
-    buttonHolder = CreateGridLayoutGroup(get_transform()->get_parent());
-    buttonHolder->set_cellSize({70.0f, 10.0f});
-    openButton = CreateUIButton(buttonHolder->get_transform(), "VIEW SCORE DETAILS", "PracticeButton", {0, 0}, {70.0f, 10.0f}, [this](){
-        Show(true, true, nullptr);
+    modalUI->title = CreateText(modalUI->modal->get_transform(), "<size=150%>SCORE DETAILS</size>", UnityEngine::Vector2(14, y));
+    modalUI->score = CreateText(modalUI->list->get_transform(), "");
+    modalUI->maxCombo = CreateText(modalUI->list->get_transform(), "");
+    if (ScoreDetails::config.uiPlayCount) modalUI->playCount = CreateText(modalUI->list->get_transform(), "");
+    if (ScoreDetails::config.uiMissCount) modalUI->missCount = CreateText(modalUI->list->get_transform(), "");
+    if (ScoreDetails::config.uiBadCutCount) modalUI->badCutCount = CreateText(modalUI->list->get_transform(), "");
+    if (ScoreDetails::config.uiPauseCount) modalUI->pauseCountGUI = CreateText(modalUI->list->get_transform(), "");
+    if (ScoreDetails::config.uiDatePlayed) modalUI->datePlayed = CreateText(modalUI->list->get_transform(), "");
+    modalUI->buttonHolder = CreateGridLayoutGroup(modalUI->modal->get_transform()->get_parent());
+    modalUI->buttonHolder->set_cellSize({70.0f, 10.0f});
+    modalUI->openButton = CreateUIButton(modalUI->buttonHolder->get_transform(), "VIEW SCORE DETAILS", "PracticeButton", {0, 0}, {70.0f, 10.0f}, [modalUI](){
+        modalUI->modal->Show(true, true, nullptr);
     });
+    *modalUIPointer = modalUI;
 }
 
 void ScorePercentage::ModalPopup::updateInfo(PlayerLevelStatsData* playerLevelStatsData, IDifficultyBeatmap* difficultyBeatmap){
@@ -60,9 +66,9 @@ void ScorePercentage::ModalPopup::updateInfo(PlayerLevelStatsData* playerLevelSt
     std::string datePlayedText = "Date Played - " + (ScoreDetails::config.datePlayed.compare("") != 0 ? ("<size=85%><line-height=75%>" + ScoreDetails::config.datePlayed) : "N/A");
     score->SetText(il2cpp_utils::newcsstr(scoreText));
     maxCombo->SetText(il2cpp_utils::newcsstr(maxComboText));
-    if (playCount) playCount->SetText(il2cpp_utils::newcsstr(playCountText));
-    if (missCount) missCount->SetText(il2cpp_utils::newcsstr(missCountText));
-    if (badCutCount) badCutCount->SetText(il2cpp_utils::newcsstr(badCutCountText));
-    if (pauseCountGUI) pauseCountGUI->SetText(il2cpp_utils::newcsstr(pauseCountText));
-    if (datePlayed) datePlayed->SetText(il2cpp_utils::newcsstr(datePlayedText));
+    if (ScoreDetails::config.uiPlayCount) playCount->SetText(il2cpp_utils::newcsstr(playCountText));
+    if (ScoreDetails::config.uiMissCount) missCount->SetText(il2cpp_utils::newcsstr(missCountText));
+    if (ScoreDetails::config.uiBadCutCount) badCutCount->SetText(il2cpp_utils::newcsstr(badCutCountText));
+    if (ScoreDetails::config.uiPauseCount) pauseCountGUI->SetText(il2cpp_utils::newcsstr(pauseCountText));
+    if (ScoreDetails::config.uiDatePlayed) datePlayed->SetText(il2cpp_utils::newcsstr(datePlayedText));
 }
