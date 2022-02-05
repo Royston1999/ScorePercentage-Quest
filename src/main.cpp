@@ -302,7 +302,7 @@ MAKE_HOOK_FIND_CLASS_UNSAFE_INSTANCE(GameplayCoreSceneSetupData_ctor, "", "Gamep
     multiplayerMapData.statsdata = QuestUI::ArrayUtil::First(Resources::FindObjectsOfTypeAll<PlayerDataModel*>())->playerData->GetPlayerLevelStatsData(difficultyBeatmap);
     multiCurrentScore = multiplayerMapData.statsdata->get_highScore();
     pauseCount = 0;
-    scoreDetailsUI->modal->Hide(true, nullptr);
+    if (scoreDetailsUI != nullptr) scoreDetailsUI->modal->Hide(true, nullptr);
     getLogger().info("current score: %s", std::to_string(multiCurrentScore).c_str());
 }
 
