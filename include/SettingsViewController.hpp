@@ -17,6 +17,5 @@ DECLARE_CLASS_CODEGEN(ScoreDetailsUI::Views, SettingsViewController, HMUI::ViewC
     DECLARE_OVERRIDE_METHOD(void, DidActivate, il2cpp_utils::FindMethodUnsafe("HMUI", "ViewController", "DidActivate", 3), bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling);
 
 public:
-
     UnityEngine::UI::Button* CreateUIViewControllerButton(UnityEngine::Transform* parent, std::string title, HMUI::ViewController* viewController);
 )
