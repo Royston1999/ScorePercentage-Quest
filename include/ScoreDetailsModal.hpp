@@ -29,10 +29,8 @@ namespace ScorePercentage{
             TMPro::TextMeshProUGUI* pauseCountGUI;
             TMPro::TextMeshProUGUI* datePlayed;
             UnityEngine::UI::Button* openButton;
-            UnityEngine::UI::GridLayoutGroup* buttonHolder;
             UnityEngine::UI::VerticalLayoutGroup* list;
             void updateInfo(GlobalNamespace::PlayerLevelStatsData* playerLevelStatsData, GlobalNamespace::IDifficultyBeatmap* difficultyBeatmap);
     };
-    static ModalPopup* CreatePopupModal(UnityEngine::Transform* parent, int totalUIText);
     void initModalPopup(ModalPopup** modalUI, UnityEngine::Transform* parent);
 }
