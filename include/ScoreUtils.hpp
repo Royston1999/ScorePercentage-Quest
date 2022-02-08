@@ -5,10 +5,10 @@
 #include <algorithm>
 
 namespace ScorePercentage::Utils{
-    std::string Round(float val, int precision);
     int calculateMaxScore(int blockCount);
-    std::string valueDifferenceString(float valueDifference);
     double calculatePercentage(int maxScore, int resultScore);
+    std::string Round(float val, int precision);
+    std::string valueDifferenceString(float valueDifference);
     std::string createRankText(std::string rankText, double percentageDifference);
     std::string createScoreText(std::string scoreText, int scoreDifference);
     std::string createMissText(std::string missText, int missDifference);

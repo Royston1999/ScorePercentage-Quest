@@ -180,12 +180,12 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
         {
             int currentMisses = ScoreDetails::config.badCutCount + ScoreDetails::config.missCount;
             int resultMisses = self->levelCompletionResults->missedCount + self->levelCompletionResults->badCutsCount;
-            self->goodCutsPercentageText->SetText(il2cpp_utils::newcsstr(createMissText(missText, resultMisses - currentMisses)));
+            self->goodCutsPercentageText->SetText(il2cpp_utils::newcsstr(createMissText(missText, currentMisses - resultMisses)));
         }
         else self->goodCutsPercentageText->SetText(il2cpp_utils::newcsstr(missText));
 
         // write new highscore to file
-        if ((resultScore - currentScore) > 0 && isValidScore)
+        if ((resultScore - currentScore) > 0 && !self->get_practice())
         {
             int misses = self->levelCompletionResults->missedCount;
             int badCut = self->levelCompletionResults->badCutsCount;
