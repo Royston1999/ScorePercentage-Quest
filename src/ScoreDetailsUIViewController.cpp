@@ -1,6 +1,6 @@
 #include "ScoreDetailsUIViewController.hpp"
 #include "SettingsFlowCoordinator.hpp"
-#include "ScoreDetailsConfig.hpp"
+#include "ScorePercentageConfig.hpp"
 #include "UnityEngine/RectOffset.hpp"
 
 DEFINE_TYPE(ScoreDetailsUI::Views, ScoreDetailsUIViewController);
@@ -46,67 +46,60 @@ void ScoreDetailsUI::Views::ScoreDetailsUIViewController::DidActivate(
 
     if (firstActivation) {
         scoreDetailsContainer = QuestUI::BeatSaberUI::CreateVerticalLayoutGroup(get_transform());
-        AddHoverHint(CreateToggle(scoreDetailsContainer->get_transform(), "Toggle Advanced Score Details", ScoreDetails::config.MenuHighScore, 
+        AddHoverHint(CreateToggle(scoreDetailsContainer->get_transform(), "Toggle Advanced Score Details", scorePercentageConfig.MenuHighScore, 
         [](bool value) {    
-            setBool(getConfig().config, "Menu Highscore Percentage", value, false); getConfig().Write();
-            ConfigHelper::LoadConfig(ScoreDetails::config, getConfig().config);
+            setBool(getConfig().config, "Menu Highscore Percentage", value, false);
             toggleToggles(value);
         } )->get_gameObject(), "replaces the score bar in the menu with a useless popup UI");
 
-        ppToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display PP", ScoreDetails::config.uiPP, 
+        ppToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display PP", scorePercentageConfig.uiPP, 
             [](bool value) {
-                setBool(getConfig().config, "uiPP", value, false); getConfig().Write();
-                ConfigHelper::LoadConfig(ScoreDetails::config, getConfig().config);
-                ScoreDetails::modalSettingsChanged = true;
+                setBool(getConfig().config, "uiPP", value, false);
+                modalSettingsChanged = true;
             });
         
         AddHoverHint(ppToggle->get_gameObject(), "Displays amount of pp given by the score if the map is ranked (playing with positive modifiers will make this value innacurate)");
 
-        playCountToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display Play Count", ScoreDetails::config.uiPlayCount, 
+        playCountToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display Play Count", scorePercentageConfig.uiPlayCount, 
             [](bool value) {
-                setBool(getConfig().config, "uiPlayCount", value, false); getConfig().Write();
-                ConfigHelper::LoadConfig(ScoreDetails::config, getConfig().config);
-                ScoreDetails::modalSettingsChanged = true;
+                setBool(getConfig().config, "uiPlayCount", value, false);
+                modalSettingsChanged = true;
             });
 
         AddHoverHint(playCountToggle->get_gameObject(), "Displays number of times the map has been played");    
 
-        missCountToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display Miss Count", ScoreDetails::config.uiMissCount, 
+        missCountToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display Miss Count", scorePercentageConfig.uiMissCount, 
             [](bool value) {
-                setBool(getConfig().config, "uiMissCount", value, false); getConfig().Write();
-                ConfigHelper::LoadConfig(ScoreDetails::config, getConfig().config);
-                ScoreDetails::modalSettingsChanged = true;
+                setBool(getConfig().config, "uiMissCount", value, false);
+                modalSettingsChanged = true;
             });
 
         AddHoverHint(missCountToggle->get_gameObject(), "Displays number of misses");
 
-        badCutCountToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display Bad Cut Count", ScoreDetails::config.uiBadCutCount, 
+        badCutCountToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display Bad Cut Count", scorePercentageConfig.uiBadCutCount, 
             [](bool value) {
-                setBool(getConfig().config, "uiBadCutCount", value, false); getConfig().Write();
-                ConfigHelper::LoadConfig(ScoreDetails::config, getConfig().config);
-                ScoreDetails::modalSettingsChanged = true;
+                setBool(getConfig().config, "uiBadCutCount", value, false);
+                modalSettingsChanged = true;
             });
 
         AddHoverHint(badCutCountToggle->get_gameObject(), "Displays number of bad cuts");
 
-        pauseCountToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display Pause Count", ScoreDetails::config.uiPauseCount, 
+        pauseCountToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display Pause Count", scorePercentageConfig.uiPauseCount, 
             [](bool value) {
-                setBool(getConfig().config, "uiPauseCount", value, false); getConfig().Write();
-                ConfigHelper::LoadConfig(ScoreDetails::config, getConfig().config);
-                ScoreDetails::modalSettingsChanged = true;
+                setBool(getConfig().config, "uiPauseCount", value, false);
+                modalSettingsChanged = true;
             });
 
         AddHoverHint(pauseCountToggle->get_gameObject(), "Displays number of times the game was paused during the level");
 
-        datePlayedToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display Date Played", ScoreDetails::config.uiDatePlayed, 
+        datePlayedToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display Date Played", scorePercentageConfig.uiDatePlayed, 
             [](bool value) {
-                setBool(getConfig().config, "uiDatePlayed", value, false); getConfig().Write();
-                ConfigHelper::LoadConfig(ScoreDetails::config, getConfig().config);
-                ScoreDetails::modalSettingsChanged = true;
+                setBool(getConfig().config, "uiDatePlayed", value, false);
+                modalSettingsChanged = true;
             });
 
         AddHoverHint(datePlayedToggle->get_gameObject(), "Displays the date on which the most recent score was set");
 
-        if (!ScoreDetails::config.MenuHighScore) toggleToggles(false);
+        if (!scorePercentageConfig.MenuHighScore) toggleToggles(false);
     }
 }

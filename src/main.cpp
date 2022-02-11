@@ -33,7 +33,6 @@
 #include "ScoreDetailsModal.hpp"
 #include "ScoreUtils.hpp"
 #include "SettingsFlowCoordinator.hpp"
-#include "ScoreDetailsConfig.hpp"
 #include "PPCalculator.hpp"
 #include "main.hpp"
 
@@ -43,12 +42,13 @@ using namespace UnityEngine;
 using namespace GlobalNamespace;
 using namespace ScorePercentage::Utils;
 
-ScoreDetailsConfig ScoreDetails::config;
+ScorePercentageConfig scorePercentageConfig;
 ModInfo modInfo;
 ScorePercentage::ModalPopup* scoreDetailsUI = nullptr;
 int pauseCount = 0;
-bool ScoreDetails::modalSettingsChanged = false;
+bool modalSettingsChanged = false;
 BeatMapData mapData;
+Il2CppString* origRankText = nullptr;
 
 // Loads the config from disk using our modInfo, then returns it for use
 Configuration& getConfig() {
@@ -73,9 +73,9 @@ extern "C" void setup(ModInfo& info) {
     getLogger().info("Completed setup!");
 }
 
-void ScoreDetails::loadConfig() {
+void loadConfig() {
     getConfig().Load();
-    ConfigHelper::LoadConfig(config, getConfig().config);
+    ConfigHelper::LoadConfig(scorePercentageConfig, getConfig().config);
 }
 
 void updateMapData(PlayerLevelStatsData* playerLevelStatsData, IDifficultyBeatmap* difficultyBeatmap){
@@ -118,15 +118,15 @@ MAKE_HOOK_MATCH(Menu, &LevelStatsView::ShowStats, void, LevelStatsView* self, ID
     Menu(self, difficultyBeatmap, playerData);
     if (playerData != nullptr)
     {
-        if (scoreDetailsUI == nullptr || ScoreDetails::modalSettingsChanged) ScorePercentage::initModalPopup(&scoreDetailsUI, self->get_transform()->get_parent());
+        if (scoreDetailsUI == nullptr || modalSettingsChanged) ScorePercentage::initModalPopup(&scoreDetailsUI, self->get_transform()->get_parent());
         auto* playerLevelStatsData = playerData->GetPlayerLevelStatsData(difficultyBeatmap);
         updateMapData(playerLevelStatsData, difficultyBeatmap);
         if (playerLevelStatsData->validScore)
         {
             ConfigHelper::LoadBeatMapInfo(mapData.mapID, mapData.idString);
-            if (ScoreDetails::config.MenuHighScore) toggleModalVisibility(true, self);
+            if (scorePercentageConfig.MenuHighScore) toggleModalVisibility(true, self);
         }
-        if (!ScoreDetails::config.MenuHighScore || !playerLevelStatsData->validScore) toggleModalVisibility(false, self);
+        if (!scorePercentageConfig.MenuHighScore || !playerLevelStatsData->validScore) toggleModalVisibility(false, self);
     }
 }
 
@@ -162,30 +162,30 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
         self->goodCutsPercentageText->set_enableWordWrapping(false);
         
         auto* rankTitleText = self->get_transform()->Find(il2cpp_utils::newcsstr("Container/ClearedInfo/RankTitle"))->GetComponentInChildren<TMPro::TextMeshProUGUI*>();
-        
+        if (origRankText == nullptr) origRankText = rankTitleText->get_text();
         // rank text
-        if (ScoreDetails::config.LevelEndRank)
+        if (scorePercentageConfig.LevelEndRank)
         {
-            rankTitleText->SetText(il2cpp_utils::newcsstr("PERCENTAGE"));
+            rankTitleText->SetText(il2cpp_utils::newcsstr("Percentage"));
             rankText = Round(resultPercentage, 2) + "<size=45%>%";    
         }
-        else rankTitleText->SetText(il2cpp_utils::newcsstr("RANK"));
+        else rankTitleText->SetText(origRankText);
 
         // percentage difference text
-        if (ScoreDetails::config.ScorePercentageDifference && isValidScore) rankText = createRankText(rankText, resultPercentage - mapData.currentPercentage);
+        if (scorePercentageConfig.ScorePercentageDifference && isValidScore) rankText = createRankText(rankText, resultPercentage - mapData.currentPercentage);
         self->rankText->SetText(il2cpp_utils::newcsstr(rankText));
 
         // score difference text
-        if (ScoreDetails::config.ScoreDifference && isValidScore)
+        if (scorePercentageConfig.ScoreDifference && isValidScore)
         {
             self->newHighScoreText->SetActive(false);
             self->scoreText->SetText(il2cpp_utils::newcsstr(createScoreText(scoreText, resultScore - mapData.currentScore)));
         }
 
         // miss difference text
-        if(ScoreDetails::config.missDifference && ScoreDetails::config.missCount != -1 && isValidScore)
+        if(scorePercentageConfig.missDifference && scorePercentageConfig.missCount != -1 && isValidScore)
         {
-            int currentMisses = ScoreDetails::config.badCutCount + ScoreDetails::config.missCount;
+            int currentMisses = scorePercentageConfig.badCutCount + scorePercentageConfig.missCount;
             int resultMisses = self->levelCompletionResults->missedCount + self->levelCompletionResults->badCutsCount;
             self->goodCutsPercentageText->SetText(il2cpp_utils::newcsstr(createMissText(missText, currentMisses - resultMisses)));
         }
@@ -205,7 +205,7 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
 MAKE_HOOK_MATCH(MultiplayerResults, &ResultsTableCell::SetData, void, ResultsTableCell* self, int order, IConnectedPlayer* connectedPlayer, LevelCompletionResults* levelCompletionResults){
     MultiplayerResults(self, order, connectedPlayer, levelCompletionResults);
     bool passedLevel = levelCompletionResults->levelEndStateType == 1 ? true : false;
-    if (ScoreDetails::config.LevelEndRank){
+    if (scorePercentageConfig.LevelEndRank){
         if (!self->rankText->get_richText()) toggleMultiResultsTableFormat(true, self);
         bool isNoFail = levelCompletionResults->gameplayModifiers->get_noFailOn0Energy() && levelCompletionResults->energy == 0;
         std::string percentageText = Round(calculatePercentage(mapData.maxScore, levelCompletionResults->modifiedScore), 2);
@@ -240,20 +240,21 @@ MAKE_HOOK_FIND_CLASS_UNSAFE_INSTANCE(GameplayCoreSceneSetupData_ctor, "", "Gamep
 
 MAKE_HOOK_MATCH(PPTime, &MainMenuViewController::DidActivate, void, MainMenuViewController* self, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
     PPTime(self, firstActivation, addedToHierarchy, screenSystemEnabling);
-    PPCalculator::PP::Initialize();
+    if (firstActivation) PPCalculator::PP::Initialize();
 }
 
 MAKE_HOOK_MATCH(MenuTransitionsHelper_RestartGame, &GlobalNamespace::MenuTransitionsHelper::RestartGame, void, GlobalNamespace::MenuTransitionsHelper* self, System::Action_1<Zenject::DiContainer*>* finishCallback)
 {
     delete scoreDetailsUI;
     scoreDetailsUI = nullptr;
+    origRankText = nullptr;
     MenuTransitionsHelper_RestartGame(self, finishCallback);
 }
 
 // Called later on in the game loading - a good time to install function hooks
 extern "C" void load() {
     il2cpp_functions::Init();
-    ScoreDetails::loadConfig();
+    loadConfig();
     QuestUI::Init();
     custom_types::Register::AutoRegister();
     QuestUI::Register::RegisterModSettingsFlowCoordinator<ScoreDetailsUI::SettingsFlowCoordinator*>(modInfo);
@@ -266,6 +267,5 @@ extern "C" void load() {
     INSTALL_HOOK(getLogger(), PPTime);
     INSTALL_HOOK(getLogger(), GameplayCoreSceneSetupData_ctor)
     INSTALL_HOOK(getLogger(), MenuTransitionsHelper_RestartGame);
-    // INSTALL_HOOK(getLogger(), fillresults);
     getLogger().info("Installed all hooks!");
 }

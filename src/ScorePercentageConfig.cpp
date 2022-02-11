@@ -1,5 +1,5 @@
 #include <tuple>
-#include "ScoreDetailsConfig.hpp"
+#include "ScorePercentageConfig.hpp"
 #include "main.hpp"
 
 using namespace rapidjson;
@@ -15,6 +15,8 @@ std::optional<bool> setBool(Value& obj, std::string_view fieldName, bool value, 
         }
     }
     itr->value.SetBool(value);
+    getConfig().Write();
+    ConfigHelper::LoadConfig(scorePercentageConfig, getConfig().config);
     return true;
 }
 
@@ -40,8 +42,8 @@ void ConfigHelper::AddBeatMap(MemoryPoolAllocator<>& allocator, Value& obj, std:
 }
 
 void ConfigHelper::UpdateBeatMapInfo(std::string mapID, std::string diff, int missCount, int badCutCount, int pauseCount, std::string datePlayed){
-    MemoryPoolAllocator<>& allocator = ScoreDetails::config.beatMapData.GetAllocator();
-    Value& obj = ScoreDetails::config.beatMapData;
+    MemoryPoolAllocator<>& allocator = scorePercentageConfig.beatMapData.GetAllocator();
+    Value& obj = scorePercentageConfig.beatMapData;
     auto itr = obj.FindMember(mapID);
     if (itr != obj.MemberEnd()){
         auto itr2 = itr->value.GetObject().FindMember(diff);
@@ -70,26 +72,26 @@ void ConfigHelper::UpdateBeatMapInfo(std::string mapID, std::string diff, int mi
 }
 
 void ConfigHelper::LoadBeatMapInfo(std::string mapID, std::string diff){    
-    MemoryPoolAllocator<>& allocator = ScoreDetails::config.beatMapData.GetAllocator();
-    Value& obj = ScoreDetails::config.beatMapData;
+    MemoryPoolAllocator<>& allocator = scorePercentageConfig.beatMapData.GetAllocator();
+    Value& obj = scorePercentageConfig.beatMapData;
     auto itr = obj.FindMember(mapID);
     if (itr != obj.MemberEnd()){
         auto itr2 = itr->value.GetObject().FindMember(diff);
         if (itr2 != itr->value.GetObject().MemberEnd()){
-            ScoreDetails::config.badCutCount = itr2->value.GetObject().FindMember("badCutCount")->value.GetInt();
-            ScoreDetails::config.missCount = itr2->value.GetObject().FindMember("missCount")->value.GetInt();
-            ScoreDetails::config.pauseCount = itr2->value.GetObject().FindMember("pauseCount")->value.GetInt();
-            ScoreDetails::config.datePlayed = itr2->value.GetObject().FindMember("datePlayed")->value.GetString();
+            scorePercentageConfig.badCutCount = itr2->value.GetObject().FindMember("badCutCount")->value.GetInt();
+            scorePercentageConfig.missCount = itr2->value.GetObject().FindMember("missCount")->value.GetInt();
+            scorePercentageConfig.pauseCount = itr2->value.GetObject().FindMember("pauseCount")->value.GetInt();
+            scorePercentageConfig.datePlayed = itr2->value.GetObject().FindMember("datePlayed")->value.GetString();
             return;
         }
     }
-    ScoreDetails::config.badCutCount = -1;
-    ScoreDetails::config.missCount = -1;
-    ScoreDetails::config.pauseCount = -1;
-    ScoreDetails::config.datePlayed = "";
+    scorePercentageConfig.badCutCount = -1;
+    scorePercentageConfig.missCount = -1;
+    scorePercentageConfig.pauseCount = -1;
+    scorePercentageConfig.datePlayed = "";
 }
 
-bool ConfigHelper::LoadConfig(ScoreDetailsConfig& con, ConfigDocument& config) {
+bool ConfigHelper::LoadConfig(ScorePercentageConfig& con, ConfigDocument& config) {
     if (!config.HasMember("Menu Highscore Percentage")) ConfigHelper::CreateDefaultConfig(config);
     ConfigHelper::LoadBeatMapDataFile();
     if (config.HasMember("beatMaps")) ConfigHelper::UpdateOldConfig(config);
@@ -129,7 +131,7 @@ void ConfigHelper::CreateDefaultConfig(ConfigDocument& config){
 }
 
 void ConfigHelper::UpdateOldConfig(ConfigDocument& config){
-    MemoryPoolAllocator<>& allocator = ScoreDetails::config.beatMapData.GetAllocator();
+    MemoryPoolAllocator<>& allocator = scorePercentageConfig.beatMapData.GetAllocator();
     auto locateMaps = config.FindMember("beatMaps");
     auto arr = locateMaps->value.GetArray();
     auto size = arr.Size();
@@ -153,7 +155,7 @@ void ConfigHelper::UpdateOldConfig(ConfigDocument& config){
             arr2[i2].EraseMember("diffType");
             v.AddMember(string2, arr2[i2], allocator);
         }
-        ScoreDetails::config.beatMapData.AddMember(string, v, allocator);
+        scorePercentageConfig.beatMapData.AddMember(string, v, allocator);
     }
     WriteFile();
     config.EraseMember("beatMaps");
@@ -177,7 +179,7 @@ void ConfigHelper::LoadBeatMapDataFile(){
         getLogger().info("Failed to read map data");
         return;
     }
-    ScoreDetails::config.beatMapData.Swap(d);
+    scorePercentageConfig.beatMapData.Swap(d);
 }
 
 void ConfigHelper::WriteFile(){
@@ -185,7 +187,7 @@ void ConfigHelper::WriteFile(){
     std::string file = dir + "beatMapData.json";
     rapidjson::StringBuffer buffer;
     rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-    ScoreDetails::config.beatMapData.Accept(writer);
+    scorePercentageConfig.beatMapData.Accept(writer);
     std::string s = buffer.GetString();
     writefile(file, s);
 }

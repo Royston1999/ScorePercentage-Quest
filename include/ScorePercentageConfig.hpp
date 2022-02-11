@@ -35,7 +35,7 @@ return itr->value.method()
 std::optional<bool> getBool(rapidjson::Value& obj, std::string_view fieldName, bool required = false);
 std::optional<bool> setBool(rapidjson::Value& obj, std::string_view fieldName,  bool value, bool required = false);
 
-class ScoreDetailsConfig {
+class ScorePercentageConfig {
 public:
     ConfigDocument beatMapData;
 
@@ -59,7 +59,7 @@ public:
 
 class ConfigHelper {
 public:
-    static bool LoadConfig(ScoreDetailsConfig& con, ConfigDocument& config);
+    static bool LoadConfig(ScorePercentageConfig& con, ConfigDocument& config);
     static void AddBeatMap(rapidjson::MemoryPoolAllocator<>& allocator, rapidjson::Value& obj, std::string mapID, std::string diff, int missCount, int badCutCount, int pauseCount, std::string datePlayed);
     static void UpdateBeatMapInfo(std::string mapID, std::string diff, int missCount, int badCutCount, int pauseCount, std::string datePlayed);
     static void LoadBeatMapInfo(std::string mapID, std::string diff);

@@ -22,28 +22,24 @@ void ScoreDetailsUI::Views::SettingsViewController::DidActivate(
     if (firstActivation) {
         VerticalLayoutGroup* container = CreateVerticalLayoutGroup(get_rectTransform());
 
-        AddHoverHint(CreateToggle(container->get_transform(), "Display Rank as Percentage", ScoreDetails::config.LevelEndRank, 
+        AddHoverHint(CreateToggle(container->get_transform(), "Display Rank as Percentage", scorePercentageConfig.LevelEndRank, 
         [](bool value) {
-            setBool(getConfig().config, "Level End Rank Display", value, false); getConfig().Write();
-            ConfigHelper::LoadConfig(ScoreDetails::config, getConfig().config);
+            setBool(getConfig().config, "Level End Rank Display", value, false);
         } )->get_gameObject(), "displays your rank as a percentage on the results screen");
         
-        AddHoverHint(CreateToggle(container->get_transform(), "Display Percentage Difference", ScoreDetails::config.ScorePercentageDifference, 
+        AddHoverHint(CreateToggle(container->get_transform(), "Display Percentage Difference", scorePercentageConfig.ScorePercentageDifference, 
         [](bool value) {
-            setBool(getConfig().config, "Score Percentage Difference", value, false); getConfig().Write();
-            ConfigHelper::LoadConfig(ScoreDetails::config, getConfig().config);
+            setBool(getConfig().config, "Score Percentage Difference", value, false);
         } )->get_gameObject(), "displays the score difference as a percentage compared to your previous high score");
 
-        AddHoverHint(CreateToggle(container->get_transform(), "Display Score Difference", ScoreDetails::config.ScoreDifference, 
+        AddHoverHint(CreateToggle(container->get_transform(), "Display Score Difference", scorePercentageConfig.ScoreDifference, 
         [](bool value) {
-            setBool(getConfig().config, "Score Difference", value, false); getConfig().Write();
-            ConfigHelper::LoadConfig(ScoreDetails::config, getConfig().config);
+            setBool(getConfig().config, "Score Difference", value, false);
         } )->get_gameObject(), "displays the score difference compared to your previous high score");
 
-        AddHoverHint(CreateToggle(container->get_transform(), "Display Miss Difference", ScoreDetails::config.missDifference, 
+        AddHoverHint(CreateToggle(container->get_transform(), "Display Miss Difference", scorePercentageConfig.missDifference, 
         [](bool value) {
-            setBool(getConfig().config, "Average Cut Score", value, false); getConfig().Write();
-            ConfigHelper::LoadConfig(ScoreDetails::config, getConfig().config);
+            setBool(getConfig().config, "Average Cut Score", value, false);
         } )->get_gameObject(), "displays the miss difference copared to your previous high score");
 
         graphicsButton = CreateUIViewControllerButton(container->get_transform(), "Advanced Score Details Settings", QuestUI::BeatSaberUI::CreateViewController<ScoreDetailsUI::Views::ScoreDetailsUIViewController*>());
