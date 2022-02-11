@@ -1,4 +1,3 @@
-#include <tuple>
 #include "ScorePercentageConfig.hpp"
 #include "main.hpp"
 

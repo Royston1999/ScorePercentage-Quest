@@ -141,7 +141,7 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
     double resultPercentage;
 
     // funny thing i wonder if anyone notices
-    if (firstActivation) CreateText(self->get_transform(), "<size=150%>KNOBHEAD</size>", UnityEngine::Vector2(20, 20));
+    // if (firstActivation) CreateText(self->get_transform(), "<size=150%>KNOBHEAD</size>", UnityEngine::Vector2(20, 20));
 
     // Default Info Texts
     std::string rankText = to_utf8(csstrtostr(self->rankText->get_text()));

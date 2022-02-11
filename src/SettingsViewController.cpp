@@ -25,7 +25,7 @@ void ScoreDetailsUI::Views::SettingsViewController::DidActivate(
         AddHoverHint(CreateToggle(container->get_transform(), "Display Rank as Percentage", scorePercentageConfig.LevelEndRank, 
         [](bool value) {
             setBool(getConfig().config, "Level End Rank Display", value, false);
-        } )->get_gameObject(), "displays your rank as a percentage on the results screen");
+        } )->get_gameObject(), "displays your rank as a percentage on the results screen. (also spices up the multiplayer results screen a little)");
         
         AddHoverHint(CreateToggle(container->get_transform(), "Display Percentage Difference", scorePercentageConfig.ScorePercentageDifference, 
         [](bool value) {
