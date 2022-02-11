@@ -41,21 +41,19 @@ void ScorePercentage::initModalPopup(ScorePercentage::ModalPopup** modalUIPointe
     *modalUIPointer = modalUI;
 }
 
-void ScorePercentage::ModalPopup::updateInfo(PlayerLevelStatsData* playerLevelStatsData, IDifficultyBeatmap* difficultyBeatmap){
-    int currentDifficultyMaxScore = calculateMaxScore(difficultyBeatmap->get_beatmapData()->cuttableNotesCount);
-    double currentDifficultyPercentageScore = calculatePercentage(currentDifficultyMaxScore, playerLevelStatsData->highScore);
+void ScorePercentage::ModalPopup::updateInfo(){
+    double currentDifficultyPercentageScore = mapData.currentPercentage;
 
-    bool isStandardLevel = to_utf8(csstrtostr(playerLevelStatsData->get_beatmapCharacteristic()->get_serializedName())).compare("Standard") == 0;
-    float maxPP = isStandardLevel ? PPCalculator::PP::BeatmapMaxPP(to_utf8(csstrtostr(playerLevelStatsData->get_levelID())), difficultyBeatmap->get_difficulty()) : -1;
+    bool isStandardLevel = mapData.mapType.compare("Standard") == 0;
+    float maxPP = isStandardLevel ? PPCalculator::PP::BeatmapMaxPP(mapData.mapID, mapData.diff) : -1;
     float truePP = maxPP != -1 ? PPCalculator::PP::CalculatePP(maxPP, currentDifficultyPercentageScore/100) : -1.0f;
     bool isValidPP = truePP != -1 && ScoreDetails::config.uiPP;
 
-    std::string highScoreText = to_utf8(csstrtostr(ScoreFormatter::Format(playerLevelStatsData->highScore)));
-    bool isFC = playerLevelStatsData->fullCombo;
+    std::string highScoreText = to_utf8(csstrtostr(ScoreFormatter::Format(mapData.currentScore)));
 
     std::string scoreText = createModalScoreText(highScoreText, currentDifficultyPercentageScore, truePP, isValidPP);
-    std::string maxComboText = createComboText(playerLevelStatsData->maxCombo, isFC);
-    std::string playCountText = "Play Count - " + std::to_string(playerLevelStatsData->playCount);
+    std::string maxComboText = createComboText(mapData.maxCombo, mapData.isFC);
+    std::string playCountText = "Play Count - " + std::to_string(mapData.playCount);
     std::string missCountText = createTextFromBeatmapData(ScoreDetails::config.missCount, "Miss Count - ");
     std::string badCutCountText = createTextFromBeatmapData(ScoreDetails::config.badCutCount, "Bad Cut Count - ");
     std::string pauseCountText = createTextFromBeatmapData(ScoreDetails::config.pauseCount, "Pause Count - ");

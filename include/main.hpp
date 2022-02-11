@@ -23,3 +23,18 @@ extern ModInfo modInfo;
 // Define these functions here so that we can easily read configuration and log information from other files
 Configuration& getConfig();
 Logger& getLogger();
+
+struct BeatMapData{
+    int currentScore;
+    float currentPercentage;
+    int maxScore;
+    int diff;
+    bool isFC;
+    int maxCombo;
+    int playCount;
+    std::string mapType;
+    std::string mapID;
+    std::string idString;
+};
+
+extern BeatMapData mapData;

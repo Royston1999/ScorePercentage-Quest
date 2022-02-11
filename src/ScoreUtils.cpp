@@ -1,5 +1,5 @@
 #include "ScoreUtils.hpp"
-
+// #include <codecvt>
 namespace ScorePercentage::Utils{
     std::string Round (float val, int precision)
     {
@@ -31,13 +31,13 @@ namespace ScorePercentage::Utils{
         //Better or same Score
         if (valueDifference >= 0)
         {
-            differenceColor = colorPositive;
+            differenceColor = positiveColour;
             positiveIndicator = "+";
         }
         //Worse Score
         else
         {
-            differenceColor = colorNegative;
+            differenceColor = negativeColour;
             positiveIndicator = "";
         }
         return differenceColor + positiveIndicator + (ceilf(valueDifference) != valueDifference ? Round(valueDifference, 2) : Round(valueDifference, 0));
@@ -87,6 +87,7 @@ namespace ScorePercentage::Utils{
         return header + highScoreText + openParenthesis + scoreColour + percentageText + percent + colourEnd + closeParenthesis + ppText;
     }
     std::string createComboText(int combo, bool isFC){
+        // std::wstring_convert<std::codecvt_utf8_utf16<char16_t>,char16_t> convert;
         std::string header = "Max Combo - ";
         std::string comboText = isFC ? "Full Combo" : std::to_string(combo);
         return header + comboText;
@@ -94,7 +95,7 @@ namespace ScorePercentage::Utils{
     std::string createTextFromBeatmapData(int value, std::string header){
         std::string invalidValue = "N/A";
         if (value == -1) return header + invalidValue;
-        std::string colourValue = value == 0 ? colorNoMiss : colorNegative;
+        std::string colourValue = value == 0 ? noMissColour : negativeColour;
         std::string valueText = std::to_string(value);
         return header + colourValue + valueText;
     }

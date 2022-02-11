@@ -44,8 +44,11 @@ using namespace GlobalNamespace;
 using namespace ScorePercentage::Utils;
 
 ScoreDetailsConfig ScoreDetails::config;
-
-ModInfo modInfo; // Stores the ID and version of our mod, and is sent to the modloader upon startup
+ModInfo modInfo;
+ScorePercentage::ModalPopup* scoreDetailsUI = nullptr;
+int pauseCount = 0;
+bool ScoreDetails::modalSettingsChanged = false;
+BeatMapData mapData;
 
 // Loads the config from disk using our modInfo, then returns it for use
 Configuration& getConfig() {
@@ -75,51 +78,55 @@ void ScoreDetails::loadConfig() {
     ConfigHelper::LoadConfig(config, getConfig().config);
 }
 
-int currentScore = 0;
-int multiCurrentScore = 0;
-double currentPercentage = 0;
-ScorePercentage::ModalPopup* scoreDetailsUI = nullptr;
-std::string mapID = "";
-std::string mapType = "";
-int pauseCount = 0;
-bool ScoreDetails::modalSettingsChanged = false;
+void updateMapData(PlayerLevelStatsData* playerLevelStatsData, IDifficultyBeatmap* difficultyBeatmap){
+    int currentScore = playerLevelStatsData->highScore;
+    std::string mapID = to_utf8(csstrtostr(playerLevelStatsData->get_levelID()));
+    std::string mapType = to_utf8(csstrtostr(playerLevelStatsData->get_beatmapCharacteristic()->get_serializedName()));
+    int diff = difficultyBeatmap->get_difficultyRank();
+    int maxScore = calculateMaxScore(difficultyBeatmap->get_beatmapData()->cuttableNotesCount);
+    float currentPercentage = calculatePercentage(maxScore, currentScore);
+    mapData.currentScore = currentScore;
+    mapData.currentPercentage = currentPercentage;
+    mapData.maxScore = maxScore;
+    mapData.mapID = mapID;
+    mapData.diff = difficultyBeatmap->get_difficulty();
+    mapData.mapType = mapType;
+    mapData.isFC = playerLevelStatsData->fullCombo;
+    mapData.playCount = playerLevelStatsData->playCount;
+    mapData.maxCombo = playerLevelStatsData->maxCombo;
+    mapData.idString = mapType.compare("Standard") != 0 ? mapType + std::to_string(diff) : std::to_string(diff);
+}
 
-struct MultiplayerMapData{
-    IDifficultyBeatmap* beatmap;
-    PlayerLevelStatsData* statsdata;
-} multiplayerMapData;
+void toggleMultiResultsTableFormat(bool value, ResultsTableCell* cell){
+    cell->rankText->set_enableWordWrapping(!value);
+    cell->rankText->set_richText(value);
+    cell->scoreText->set_richText(value);
+    cell->scoreText->set_enableWordWrapping(!value);
+    int multiplier = value ? 1 : -1;
+    cell->scoreText->get_transform()->set_localPosition(cell->scoreText->get_transform()->get_localPosition() + UnityEngine::Vector3(multiplier * -5, 0, 0));
+    cell->rankText->get_transform()->set_localPosition(cell->rankText->get_transform()->get_localPosition() + UnityEngine::Vector3(multiplier * -2, 0, 0));
+}
+
+void toggleModalVisibility(bool value, LevelStatsView* self){
+    self->get_gameObject()->set_active(!value);
+    scoreDetailsUI->openButton->get_gameObject()->SetActive(value);
+    if (value) scoreDetailsUI->updateInfo();
+    else scoreDetailsUI->modal->Hide(true, nullptr);
+}
 
 MAKE_HOOK_MATCH(Menu, &LevelStatsView::ShowStats, void, LevelStatsView* self, IDifficultyBeatmap* difficultyBeatmap, PlayerData* playerData) {
     Menu(self, difficultyBeatmap, playerData);
     if (playerData != nullptr)
     {
         if (scoreDetailsUI == nullptr || ScoreDetails::modalSettingsChanged) ScorePercentage::initModalPopup(&scoreDetailsUI, self->get_transform()->get_parent());
-        
         auto* playerLevelStatsData = playerData->GetPlayerLevelStatsData(difficultyBeatmap);
-        currentScore = playerLevelStatsData->highScore;
-        mapID = to_utf8(csstrtostr(playerLevelStatsData->get_levelID()));
-        mapType = to_utf8(csstrtostr(playerLevelStatsData->get_beatmapCharacteristic()->get_serializedName()));
+        updateMapData(playerLevelStatsData, difficultyBeatmap);
         if (playerLevelStatsData->validScore)
         {
-            currentPercentage = calculatePercentage(calculateMaxScore(difficultyBeatmap->get_beatmapData()->cuttableNotesCount), currentScore);
-            std::string idString;
-            if (mapType.compare("Standard") != 0) idString = mapType + std::to_string(difficultyBeatmap->get_difficultyRank());
-            else idString = std::to_string(difficultyBeatmap->get_difficultyRank());
-            ConfigHelper::LoadBeatMapInfo(mapID, idString);
-
-            if (ScoreDetails::config.MenuHighScore)
-            {
-                self->get_gameObject()->set_active(false);
-                scoreDetailsUI->openButton->get_gameObject()->SetActive(true);
-                scoreDetailsUI->updateInfo(playerLevelStatsData, difficultyBeatmap);
-            }
+            ConfigHelper::LoadBeatMapInfo(mapData.mapID, mapData.idString);
+            if (ScoreDetails::config.MenuHighScore) toggleModalVisibility(true, self);
         }
-        if (!ScoreDetails::config.MenuHighScore || !playerLevelStatsData->validScore)
-        {
-            self->get_gameObject()->set_active(true);
-            scoreDetailsUI->modal->Hide(true, nullptr);
-            scoreDetailsUI->openButton->get_gameObject()->SetActive(false);
-        }
+        if (!ScoreDetails::config.MenuHighScore || !playerLevelStatsData->validScore) toggleModalVisibility(false, self);
     }
 }
 
@@ -141,13 +148,13 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
     std::string scoreText = to_utf8(csstrtostr(self->scoreText->get_text()));
     std::string missText = to_utf8(csstrtostr(self->goodCutsPercentageText->get_text()));
 
-    bool isValidScore = !(self->get_practice() || currentScore == 0);
+    bool isValidScore = !(self->get_practice() || mapData.currentScore == 0);
 
     // only update stuff if level was cleared
     if (self->levelCompletionResults->levelEndStateType == GlobalNamespace::LevelCompletionResults::LevelEndStateType::Cleared)
     {
         resultScore = self->levelCompletionResults->modifiedScore;
-        resultPercentage = calculatePercentage(calculateMaxScore(self->difficultyBeatmap->get_beatmapData()->cuttableNotesCount), resultScore);
+        resultPercentage = calculatePercentage(mapData.maxScore, resultScore);
 
         // probably stops stuff from breaking
         self->rankText->set_autoSizeTextContainer(false);
@@ -165,14 +172,14 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
         else rankTitleText->SetText(il2cpp_utils::newcsstr("RANK"));
 
         // percentage difference text
-        if (ScoreDetails::config.ScorePercentageDifference && isValidScore) rankText = createRankText(rankText, resultPercentage - currentPercentage);
+        if (ScoreDetails::config.ScorePercentageDifference && isValidScore) rankText = createRankText(rankText, resultPercentage - mapData.currentPercentage);
         self->rankText->SetText(il2cpp_utils::newcsstr(rankText));
 
         // score difference text
         if (ScoreDetails::config.ScoreDifference && isValidScore)
         {
             self->newHighScoreText->SetActive(false);
-            self->scoreText->SetText(il2cpp_utils::newcsstr(createScoreText(scoreText, resultScore - currentScore)));
+            self->scoreText->SetText(il2cpp_utils::newcsstr(createScoreText(scoreText, resultScore - mapData.currentScore)));
         }
 
         // miss difference text
@@ -185,69 +192,50 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
         else self->goodCutsPercentageText->SetText(il2cpp_utils::newcsstr(missText));
 
         // write new highscore to file
-        if ((resultScore - currentScore) > 0 && !self->get_practice())
+        if ((resultScore - mapData.currentScore) > 0 && !self->get_practice())
         {
             int misses = self->levelCompletionResults->missedCount;
             int badCut = self->levelCompletionResults->badCutsCount;
-            int diff = self->difficultyBeatmap->get_difficultyRank();
-            std::string idString = mapType.compare("Standard") != 0 ? mapType + std::to_string(diff) : std::to_string(diff);
             std::string currentTime = to_utf8(csstrtostr(System::DateTime::get_UtcNow().ToLocalTime().ToString(il2cpp_utils::newcsstr("D"))));
-            ConfigHelper::UpdateBeatMapInfo(mapID, idString, misses, badCut, pauseCount, currentTime);
+            ConfigHelper::UpdateBeatMapInfo(mapData.mapID, mapData.idString, misses, badCut, pauseCount, currentTime);
         }
     }
 }
 
 MAKE_HOOK_MATCH(MultiplayerResults, &ResultsTableCell::SetData, void, ResultsTableCell* self, int order, IConnectedPlayer* connectedPlayer, LevelCompletionResults* levelCompletionResults){
     MultiplayerResults(self, order, connectedPlayer, levelCompletionResults);
-
+    bool passedLevel = levelCompletionResults->levelEndStateType == 1 ? true : false;
     if (ScoreDetails::config.LevelEndRank){
-        if (!self->rankText->get_richText()){
-                self->rankText->set_enableWordWrapping(false);
-                self->rankText->set_richText(true);
-                self->scoreText->set_richText(true);
-                self->scoreText->set_enableWordWrapping(false);
-                self->scoreText->get_transform()->set_localPosition(self->scoreText->get_transform()->get_localPosition() + UnityEngine::Vector3(-5, 0, 0));
-                self->rankText->get_transform()->set_localPosition(self->rankText->get_transform()->get_localPosition() + UnityEngine::Vector3(-2, 0, 0));
-            }
-        std::string percentageText = Round(calculatePercentage(calculateMaxScore(multiplayerMapData.beatmap->get_beatmapData()->get_cuttableNotesCount()), levelCompletionResults->modifiedScore), 2);
+        if (!self->rankText->get_richText()) toggleMultiResultsTableFormat(true, self);
+        bool isNoFail = levelCompletionResults->gameplayModifiers->get_noFailOn0Energy() && levelCompletionResults->energy == 0;
+        std::string percentageText = Round(calculatePercentage(mapData.maxScore, levelCompletionResults->modifiedScore), 2);
         self->rankText->SetText(il2cpp_utils::newcsstr(percentageText + "<size=75%>%</size>"));
         std::string score = to_utf8(csstrtostr(self->scoreText->get_text()));
-        std::string missText = levelCompletionResults->fullCombo ? "FC" : "<color=red>X</color><size=65%> </size>" + std::to_string(levelCompletionResults->missedCount + levelCompletionResults->badCutsCount);
-        self->scoreText->SetText(il2cpp_utils::newcsstr(missText + "    " + score));
+        std::string preText = isNoFail ? "NF" + tab : !passedLevel ? "F" + tab : "";
+        int totalMisses = levelCompletionResults->missedCount + levelCompletionResults->badCutsCount;
+        std::string missText = levelCompletionResults->fullCombo ? "FC" : preText + "<color=red>X</color><size=65%> </size>" + std::to_string(totalMisses);
+        self->scoreText->SetText(il2cpp_utils::newcsstr(missText + tab + score));
     }
-    else if (self->rankText->get_richText() && !ScoreDetails::config.LevelEndRank){
-        self->rankText->set_enableWordWrapping(true);
-        self->rankText->set_richText(false);
-        self->scoreText->set_richText(false);
-        self->scoreText->set_enableWordWrapping(true);
-        self->scoreText->get_transform()->set_localPosition(self->scoreText->get_transform()->get_localPosition() + UnityEngine::Vector3(5, 0, 0));
-        self->rankText->get_transform()->set_localPosition(self->rankText->get_transform()->get_localPosition() + UnityEngine::Vector3(2, 0, 0));
-    }
-    if (!ScoreDetails::config.LevelEndRank){
-        if (levelCompletionResults->levelEndStateType == GlobalNamespace::LevelCompletionResults::LevelEndStateType::Failed) self->rankText->SetText(il2cpp_utils::newcsstr("F"));
+    else{
+        if (self->rankText->get_richText()) toggleMultiResultsTableFormat(false, self);
+        if (!passedLevel) self->rankText->SetText(il2cpp_utils::newcsstr("F"));
         else self->rankText->SetText(GlobalNamespace::RankModel::GetRankName(levelCompletionResults->rank));
     }
-    if (connectedPlayer->get_isMe() && (levelCompletionResults->modifiedScore - multiCurrentScore > 0) && levelCompletionResults->levelEndStateType == LevelCompletionResults::LevelEndStateType::Cleared){
-            mapType = to_utf8(csstrtostr(multiplayerMapData.statsdata->get_beatmapCharacteristic()->get_serializedName()));
-            mapID = to_utf8(csstrtostr(multiplayerMapData.statsdata->get_levelID()));
-            int misses = levelCompletionResults->missedCount;
-            int badCut = levelCompletionResults->badCutsCount;
-            int diff = multiplayerMapData.beatmap->get_difficultyRank();
-            std::string idString = mapType.compare("Standard") != 0 ? mapType + std::to_string(diff) : std::to_string(diff);
-            std::string currentTime = to_utf8(csstrtostr(System::DateTime::get_UtcNow().ToLocalTime().ToString(il2cpp_utils::newcsstr("D"))));
-            ConfigHelper::UpdateBeatMapInfo(mapID, idString, misses, badCut, pauseCount, currentTime);
-        }
+    if (connectedPlayer->get_isMe() && (levelCompletionResults->modifiedScore - mapData.currentScore > 0) && passedLevel){
+        int misses = levelCompletionResults->missedCount;
+        int badCut = levelCompletionResults->badCutsCount;
+        std::string currentTime = to_utf8(csstrtostr(System::DateTime::get_UtcNow().ToLocalTime().ToString(il2cpp_utils::newcsstr("D"))));
+        ConfigHelper::UpdateBeatMapInfo(mapData.mapID, mapData.idString, misses, badCut, pauseCount, currentTime);
+    }
 }
 
 MAKE_HOOK_FIND_CLASS_UNSAFE_INSTANCE(GameplayCoreSceneSetupData_ctor, "", "GameplayCoreSceneSetupData", ".ctor", void, GameplayCoreSceneSetupData* self, IDifficultyBeatmap* difficultyBeatmap, IPreviewBeatmapLevel* previewBeatmapLevel, GameplayModifiers* gameplayModifiers, PlayerSpecificSettings* playerSpecificSettings, PracticeSettings* practiceSettings, bool useTestNoteCutSoundEffects, EnvironmentInfoSO* environmentInfo, ColorScheme* colorScheme)
 {
     GameplayCoreSceneSetupData_ctor(self, difficultyBeatmap, previewBeatmapLevel, gameplayModifiers, playerSpecificSettings, practiceSettings, useTestNoteCutSoundEffects, environmentInfo, colorScheme);
-    multiplayerMapData.beatmap = difficultyBeatmap;
-    multiplayerMapData.statsdata = QuestUI::ArrayUtil::First(Resources::FindObjectsOfTypeAll<PlayerDataModel*>())->playerData->GetPlayerLevelStatsData(difficultyBeatmap);
-    multiCurrentScore = multiplayerMapData.statsdata->get_highScore();
+    auto* playerLevelStatsData = QuestUI::ArrayUtil::First(Resources::FindObjectsOfTypeAll<PlayerDataModel*>())->playerData->GetPlayerLevelStatsData(difficultyBeatmap);
+    updateMapData(playerLevelStatsData, difficultyBeatmap);
     pauseCount = 0;
     if (scoreDetailsUI != nullptr) scoreDetailsUI->modal->Hide(true, nullptr);
-    getLogger().info("current score: %s", std::to_string(multiCurrentScore).c_str());
 }
 
 MAKE_HOOK_MATCH(PPTime, &MainMenuViewController::DidActivate, void, MainMenuViewController* self, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
@@ -278,5 +266,6 @@ extern "C" void load() {
     INSTALL_HOOK(getLogger(), PPTime);
     INSTALL_HOOK(getLogger(), GameplayCoreSceneSetupData_ctor)
     INSTALL_HOOK(getLogger(), MenuTransitionsHelper_RestartGame);
+    // INSTALL_HOOK(getLogger(), fillresults);
     getLogger().info("Installed all hooks!");
 }
