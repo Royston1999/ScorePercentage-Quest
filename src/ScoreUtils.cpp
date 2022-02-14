@@ -49,18 +49,10 @@ namespace ScorePercentage::Utils{
         return resultPercentage;
     }
 
-    std::string createRankText(std::string rankText, double percentageDifference){
-        std::string diffString =  valueDifferenceString(percentageDifference);
-        std::string firstLineFormatting = "  <line-height=30%><size=60%>";
-        std::string secondLineFormatting = "\n<line-height=30%><size=40%>";
-        std::string percentSymbol = "<size=30%>%";
-        return firstLineFormatting + rankText + secondLineFormatting + diffString + percentSymbol;
-    }
-    std::string createScoreText(std::string scoreText, int scoreDifference){
-        std::string diffString = valueDifferenceString(scoreDifference);
-        std::string firstLineFormatting = "<line-height=30%><size=60%> ";
-        std::string secondLineFormatting = "\n<size=40%>";
-        return firstLineFormatting + scoreText + secondLineFormatting + diffString;
+    std::string createScoreText(std::string text){
+        std::string firstLineFormatting = "<line-height=10%><size=65%>";
+        std::string secondLineFormatting = "\n<alpha=#00>F";
+        return firstLineFormatting + text + secondLineFormatting;
     }
     std::string createMissText(std::string missText, int missDifference){
         std::string diffString = valueDifferenceString(missDifference);

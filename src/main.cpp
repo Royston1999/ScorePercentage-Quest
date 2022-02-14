@@ -1,4 +1,5 @@
 #include <iomanip>
+#include <cmath>
 #include "questui/shared/QuestUI.hpp"
 #include "beatsaber-hook/shared/utils/hooking.hpp"
 #include "System/Action.hpp"
@@ -35,6 +36,7 @@
 #include "SettingsFlowCoordinator.hpp"
 #include "PPCalculator.hpp"
 #include "main.hpp"
+#include "GlobalNamespace/PartyFreePlayFlowCoordinator.hpp"
 
 using namespace QuestUI::BeatSaberUI;
 using namespace UnityEngine::UI;
@@ -49,6 +51,8 @@ int pauseCount = 0;
 bool modalSettingsChanged = false;
 BeatMapData mapData;
 Il2CppString* origRankText = nullptr;
+TMPro::TextMeshProUGUI* scoreDiffText = nullptr;
+TMPro::TextMeshProUGUI* rankDiffText = nullptr;
 
 // Loads the config from disk using our modInfo, then returns it for use
 Configuration& getConfig() {
@@ -114,6 +118,16 @@ void toggleModalVisibility(bool value, LevelStatsView* self){
     else scoreDetailsUI->modal->Hide(true, nullptr);
 }
 
+void createDifferenceTexts(ResultsViewController* self){
+    scoreDiffText = Object::Instantiate(self->rankText, self->rankText->get_transform()->get_parent());
+    rankDiffText = Object::Instantiate(self->rankText, self->rankText->get_transform()->get_parent());
+    auto scoreTextPos = self->scoreText->get_transform()->get_localPosition();
+    auto rankTextPos = self->rankText->get_transform()->get_localPosition();
+    scoreDiffText->get_transform()->set_localPosition(Vector3(scoreTextPos.x - 1.0f, rankTextPos.y - 4.5f, scoreTextPos.z));
+    rankDiffText->get_transform()->set_localPosition(Vector3(rankTextPos.x + 1.0f, rankTextPos.y - 4.5f, rankTextPos.z));
+    scoreDiffText->set_enableWordWrapping(false);
+}
+
 MAKE_HOOK_MATCH(Menu, &LevelStatsView::ShowStats, void, LevelStatsView* self, IDifficultyBeatmap* difficultyBeatmap, PlayerData* playerData) {
     Menu(self, difficultyBeatmap, playerData);
     if (playerData != nullptr)
@@ -140,6 +154,10 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
     int resultScore;
     double resultPercentage;
 
+    // disable score differences in party mode cuz idk how that's supposed to work (still shows rank as percentage tho) 
+    auto* flowthingy = QuestUI::ArrayUtil::First(Resources::FindObjectsOfTypeAll<PartyFreePlayFlowCoordinator*>());
+    bool isParty = flowthingy != nullptr ? flowthingy->isActivated ? true : false : false;
+
     // funny thing i wonder if anyone notices
     // if (firstActivation) CreateText(self->get_transform(), "<size=150%>KNOBHEAD</size>", UnityEngine::Vector2(20, 20));
 
@@ -148,11 +166,13 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
     std::string scoreText = to_utf8(csstrtostr(self->scoreText->get_text()));
     std::string missText = to_utf8(csstrtostr(self->goodCutsPercentageText->get_text()));
 
-    bool isValidScore = !(self->get_practice() || mapData.currentScore == 0);
+    bool isValidScore = !(self->get_practice() || mapData.currentScore == 0 || isParty);
 
     // only update stuff if level was cleared
     if (self->levelCompletionResults->levelEndStateType == GlobalNamespace::LevelCompletionResults::LevelEndStateType::Cleared)
     {
+        if (scoreDiffText == nullptr) createDifferenceTexts(self);
+
         resultScore = self->levelCompletionResults->modifiedScore;
         resultPercentage = calculatePercentage(mapData.maxScore, resultScore);
 
@@ -167,20 +187,31 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
         if (scorePercentageConfig.LevelEndRank)
         {
             rankTitleText->SetText(il2cpp_utils::newcsstr("Percentage"));
-            rankText = Round(resultPercentage, 2) + "<size=45%>%";    
+            rankText = "  " + Round(std::abs(resultPercentage), 2) + "<size=45%>%";
         }
         else rankTitleText->SetText(origRankText);
 
         // percentage difference text
-        if (scorePercentageConfig.ScorePercentageDifference && isValidScore) rankText = createRankText(rankText, resultPercentage - mapData.currentPercentage);
+        if (scorePercentageConfig.ScorePercentageDifference && isValidScore){
+            std::string rankDiff = valueDifferenceString(resultPercentage - mapData.currentPercentage);
+            std::string sorry = scorePercentageConfig.LevelEndRank ? "" : "  ";
+            rankText = createScoreText(sorry + rankText);
+            rankDiffText->get_gameObject()->SetActive(true);
+            rankDiffText->SetText(il2cpp_utils::newcsstr("<size=40%>" + rankDiff + "<size=30%>%"));
+        }
+        else rankDiffText->get_gameObject()->SetActive(false);
         self->rankText->SetText(il2cpp_utils::newcsstr(rankText));
 
         // score difference text
         if (scorePercentageConfig.ScoreDifference && isValidScore)
         {
             self->newHighScoreText->SetActive(false);
-            self->scoreText->SetText(il2cpp_utils::newcsstr(createScoreText(scoreText, resultScore - mapData.currentScore)));
+            std::string formatting = "<size=40%>" + ((resultScore - mapData.currentScore > 0) ? positiveColour + "+" : negativeColour); 
+            scoreDiffText->get_gameObject()->SetActive(true);
+            scoreDiffText->SetText(il2cpp_utils::newcsstr(formatting  + to_utf8(csstrtostr(ScoreFormatter::Format(resultScore - mapData.currentScore)))));
+            self->scoreText->SetText(il2cpp_utils::newcsstr(createScoreText(" " + scoreText)));
         }
+        else scoreDiffText->get_gameObject()->SetActive(false);
 
         // miss difference text
         if(scorePercentageConfig.missDifference && scorePercentageConfig.missCount != -1 && isValidScore)
@@ -192,7 +223,7 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
         else self->goodCutsPercentageText->SetText(il2cpp_utils::newcsstr(missText));
 
         // write new highscore to file
-        if ((resultScore - mapData.currentScore) > 0 && !self->get_practice())
+        if ((resultScore - mapData.currentScore) > 0 && !self->get_practice() && !isParty)
         {
             int misses = self->levelCompletionResults->missedCount;
             int badCut = self->levelCompletionResults->badCutsCount;
@@ -248,6 +279,8 @@ MAKE_HOOK_MATCH(MenuTransitionsHelper_RestartGame, &GlobalNamespace::MenuTransit
     delete scoreDetailsUI;
     scoreDetailsUI = nullptr;
     origRankText = nullptr;
+    scoreDiffText = nullptr;
+    rankDiffText = nullptr;
     MenuTransitionsHelper_RestartGame(self, finishCallback);
 }
 

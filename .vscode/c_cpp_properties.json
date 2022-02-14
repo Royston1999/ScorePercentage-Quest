@@ -3,7 +3,7 @@
         {
             "defines": [
                 "ID=\"scorepercentage\"",
-                "VERSION=\"0.1.0\"",
+                "VERSION=\"3.0.0\"",
                 "__GNUC__",
                 "__aarch64__"
             ],
