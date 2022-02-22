@@ -163,7 +163,6 @@ void toggleMultiResultsTableFormat(bool value, ResultsTableCell* cell){
 }
 
 void toggleModalVisibility(bool value, LevelStatsView* self){
-    // self->get_gameObject()->set_active(!value);
     scoreDetailsUI->openButton->get_gameObject()->SetActive(value);
     if (value) scoreDetailsUI->updateInfo();
     else scoreDetailsUI->modal->Hide(true, nullptr);
