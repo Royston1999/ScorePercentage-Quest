@@ -1,5 +1,8 @@
 #include "ScoreDetailsModal.hpp"
-
+#include "UnityEngine/Resources.hpp"
+#include "HMUI/ImageView.hpp"
+#include "UnityEngine/Material.hpp"
+#include "UnityEngine/Rect.hpp"
 using namespace QuestUI::BeatSaberUI;
 using namespace UnityEngine;
 using namespace UnityEngine::UI;
@@ -34,10 +37,27 @@ void ScorePercentage::initModalPopup(ScorePercentage::ModalPopup** modalUIPointe
     if (scorePercentageConfig.uiBadCutCount) modalUI->badCutCount = CreateText(modalUI->list->get_transform(), "");
     if (scorePercentageConfig.uiPauseCount) modalUI->pauseCountGUI = CreateText(modalUI->list->get_transform(), "");
     if (scorePercentageConfig.uiDatePlayed) modalUI->datePlayed = CreateText(modalUI->list->get_transform(), "");
-    modalUI->openButton = CreateUIButton(parent, "VIEW SCORE DETAILS", "PracticeButton", {6.0f, -36.5f}, {77.0f, 10.0f}, [modalUI](){
+
+    modalUI->onScoreDetails = [modalUI](){
         if (!modalUI->modal->isShown) modalUI->modal->Show(true, true, nullptr);
         else modalUI->modal->Hide(true, nullptr);
-    });
+    };
+    modalUI->openButton = CreateUIButton(parent, "", "PracticeButton", {-47.0f, 10.0f}, {10.0f, 11.0f}, modalUI->onScoreDetails);
+    auto contentTransform = modalUI->openButton->get_transform()->Find(il2cpp_utils::newcsstr("Content"));
+    Object::Destroy(contentTransform->Find(il2cpp_utils::newcsstr("Text"))->get_gameObject());
+    Object::Destroy(contentTransform->GetComponent<LayoutElement*>());
+    Object::Destroy(modalUI->openButton->get_transform()->Find(il2cpp_utils::newcsstr("Underline"))->get_gameObject());
+    modalUI->openButton->set_name(il2cpp_utils::newcsstr("ScoreDetailsButton"));
+    auto iconGameObject = GameObject::New_ctor(il2cpp_utils::newcsstr("Icon"));
+    auto imageView = iconGameObject->AddComponent<HMUI::ImageView*>();
+    auto iconTransform = imageView->get_rectTransform();
+    iconTransform->SetParent(contentTransform, false);
+    imageView->set_material(QuestUI::ArrayUtil::First(Resources::FindObjectsOfTypeAll<Material*>(), [](Material* x) { return to_utf8(csstrtostr(x->get_name())) == "UINoGlow"; }));
+    imageView->set_sprite(QuestUI::BeatSaberUI::Base64ToSprite(Sprites::scoreDetailsButton));
+    imageView->set_preserveAspect(true);
+    imageView->get_transform()->set_localScale({1.7f, 1.7f, 1.7f});
+    auto BG = QuestUI::ArrayUtil::First(modalUI->openButton->get_transform()->GetComponentsInChildren<HMUI::ImageView*>(), [](HMUI::ImageView* x) { return to_utf8(csstrtostr(x->get_name())) == "BG"; });
+    BG->skew = 0.0f;
     *modalUIPointer = modalUI;
 }
 
