@@ -93,7 +93,7 @@ void ConfigHelper::LoadBeatMapInfo(std::string mapID, std::string diff){
 bool ConfigHelper::LoadConfig(ScorePercentageConfig& con, ConfigDocument& config) {
     if (!config.HasMember("Menu Highscore Percentage")) ConfigHelper::CreateDefaultConfig(config);
     ConfigHelper::LoadBeatMapDataFile();
-    if (config.HasMember("beatMaps")) ConfigHelper::UpdateOldConfig(config);
+    if (!config.HasMember("alwaysOpen")) ConfigHelper::UpdateOldConfig(config);
     con.MenuHighScore = getBool(config, "Menu Highscore Percentage").value_or(false);
     con.LevelEndRank = getBool(config, "Level End Rank Display").value_or(false);
     con.missDifference = getBool(config, "Average Cut Score").value_or(false);
@@ -105,6 +105,7 @@ bool ConfigHelper::LoadConfig(ScorePercentageConfig& con, ConfigDocument& config
     con.uiBadCutCount = getBool(config, "uiBadCutCount").value_or(false);
     con.uiPauseCount = getBool(config, "uiPauseCount").value_or(false);
     con.uiDatePlayed = getBool(config, "uiDatePlayed").value_or(false);
+    con.alwaysOpen = getBool(config, "alwaysOpen").value_or(false);
     con.missCount = -1;
     con.badCutCount = -1;
     con.pauseCount = -1;
@@ -120,46 +121,53 @@ void ConfigHelper::CreateDefaultConfig(ConfigDocument& config){
     config.AddMember("Average Cut Score", false, config.GetAllocator());
     config.AddMember("Score Difference", true, config.GetAllocator());
     config.AddMember("Score Percentage Difference", true, config.GetAllocator());
+    getConfig().Write();
     config.AddMember("uiPP", true, config.GetAllocator());
     config.AddMember("uiPlayCount", true, config.GetAllocator());
     config.AddMember("uiMissCount", true, config.GetAllocator());
     config.AddMember("uiBadCutCount", true, config.GetAllocator());
     config.AddMember("uiPauseCount", true, config.GetAllocator());
+    getConfig().Write();
     config.AddMember("uiDatePlayed", true, config.GetAllocator());
+    config.AddMember("alwaysOpen", false, config.GetAllocator());
     getConfig().Write();
 }
 
 void ConfigHelper::UpdateOldConfig(ConfigDocument& config){
-    MemoryPoolAllocator<>& allocator = scorePercentageConfig.beatMapData.GetAllocator();
-    auto locateMaps = config.FindMember("beatMaps");
-    auto arr = locateMaps->value.GetArray();
-    auto size = arr.Size();
-    for (int i = 0; i < size; i++) {
-        std::string mapID = arr[i].FindMember("mapID")->value.GetString();
-        auto itr = arr[i].FindMember("difficulties");
-        auto arr2 = itr->value.GetArray();
-        auto size2 = arr2.Size();
-
-        Value v(kObjectType);
-        char buffer[60]; int len = sprintf(buffer, "%s", mapID.c_str());
-        Document::ValueType string(kStringType);
-        string.SetString(buffer, len, allocator);
-
-        for (int i2 = 0; i2 < size2; i2++) {
-            std::string diff = arr2[i2].FindMember("diffType")->value.GetString();
-
-            char diffType[20]; int len2 = sprintf(diffType, "%s", diff.c_str());
-            Document::ValueType string2(kStringType);
-            string2.SetString(diffType, len2, allocator);
-            arr2[i2].EraseMember("diffType");
-            v.AddMember(string2, arr2[i2], allocator);
-        }
-        scorePercentageConfig.beatMapData.AddMember(string, v, allocator);
-    }
-    WriteFile();
-    config.EraseMember("beatMaps");
-    getConfig().Write();
+    config.AddMember("alwaysOpen", false, config.GetAllocator());
 }
+
+// void ConfigHelper::UpdateOldConfig(ConfigDocument& config){
+//     MemoryPoolAllocator<>& allocator = scorePercentageConfig.beatMapData.GetAllocator();
+//     auto locateMaps = config.FindMember("beatMaps");
+//     auto arr = locateMaps->value.GetArray();
+//     auto size = arr.Size();
+//     for (int i = 0; i < size; i++) {
+//         std::string mapID = arr[i].FindMember("mapID")->value.GetString();
+//         auto itr = arr[i].FindMember("difficulties");
+//         auto arr2 = itr->value.GetArray();
+//         auto size2 = arr2.Size();
+
+//         Value v(kObjectType);
+//         char buffer[60]; int len = sprintf(buffer, "%s", mapID.c_str());
+//         Document::ValueType string(kStringType);
+//         string.SetString(buffer, len, allocator);
+
+//         for (int i2 = 0; i2 < size2; i2++) {
+//             std::string diff = arr2[i2].FindMember("diffType")->value.GetString();
+
+//             char diffType[20]; int len2 = sprintf(diffType, "%s", diff.c_str());
+//             Document::ValueType string2(kStringType);
+//             string2.SetString(diffType, len2, allocator);
+//             arr2[i2].EraseMember("diffType");
+//             v.AddMember(string2, arr2[i2], allocator);
+//         }
+//         scorePercentageConfig.beatMapData.AddMember(string, v, allocator);
+//     }
+//     WriteFile();
+//     config.EraseMember("beatMaps");
+//     getConfig().Write();
+// }
 
 void ConfigHelper::LoadBeatMapDataFile(){
     std::string dir = getDataDir(modInfo);

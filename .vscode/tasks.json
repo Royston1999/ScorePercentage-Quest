@@ -9,7 +9,11 @@
             "windows": {
                 "command": "ndk-build.cmd"
             },
-            "args": ["NDK_PROJECT_PATH=.", "APP_BUILD_SCRIPT=./Android.mk", "NDK_APPLICATION_MK=./Application.mk"],
+            "args": [
+                "NDK_PROJECT_PATH=.",
+                "APP_BUILD_SCRIPT=./Android.mk",
+                "NDK_APPLICATION_MK=./Application.mk"
+            ],
             "group": "build",
             "options": {
                 "env": {}
@@ -29,7 +33,8 @@
             },
             "options": {
                 "env": {}
-            }
+            },
+            "problemMatcher": []
         },
         {
             "label": "Powershell Build and Copy",

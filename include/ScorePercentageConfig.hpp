@@ -21,6 +21,7 @@ class ScorePercentageConfig {
 public:
     ConfigDocument beatMapData;
 
+    bool alwaysOpen;
     bool MenuHighScore;
     bool LevelEndRank;
     bool missDifference;

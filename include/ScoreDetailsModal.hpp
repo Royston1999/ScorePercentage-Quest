@@ -29,9 +29,13 @@ namespace ScorePercentage{
             TMPro::TextMeshProUGUI* pauseCountGUI;
             TMPro::TextMeshProUGUI* datePlayed;
             UnityEngine::UI::Button* openButton;
+            UnityEngine::UI::Button* closeButton;
             UnityEngine::UI::VerticalLayoutGroup* list;
             void updateInfo();
+            void loadingInfo();
+            void loadingFailed();
             std::function<void()> onScoreDetails;
+            bool hasValidScoreData;
     };
     void initModalPopup(ModalPopup** modalUI, UnityEngine::Transform* parent);
 }

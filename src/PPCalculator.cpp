@@ -65,7 +65,7 @@ void PPCalculator::PP::HandleWebRequestCompleted() {
 }
 
 float RatioOfMaxPP(float accuracy) {
-    if (accuracy >= 1.14) return 1.25f;
+    if (accuracy >= 1.0) return 1.5f;
     if (accuracy <= 0.0f) return 0.0f;
 
     int i = 0;

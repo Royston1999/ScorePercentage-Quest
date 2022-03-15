@@ -3,6 +3,7 @@
 #include "HMUI/ImageView.hpp"
 #include "UnityEngine/Material.hpp"
 #include "UnityEngine/Rect.hpp"
+#include "UnityEngine/UI/ColorBlock.hpp"
 using namespace QuestUI::BeatSaberUI;
 using namespace UnityEngine;
 using namespace UnityEngine::UI;
@@ -15,10 +16,9 @@ void ScorePercentage::initModalPopup(ScorePercentage::ModalPopup** modalUIPointe
     if (modalUI != nullptr){
         UnityEngine::GameObject::Destroy(modalUI->modal->get_gameObject());
         UnityEngine::GameObject::Destroy(modalUI->openButton->get_gameObject());
-        delete modalUI;
     }
     int x = 25 + (6 * uiText);
-    modalUI = (ScorePercentage::ModalPopup*) malloc(sizeof(ScorePercentage::ModalPopup));
+    if (modalUI == nullptr) modalUI = (ScorePercentage::ModalPopup*) malloc(sizeof(ScorePercentage::ModalPopup));
     modalUI->modal = CreateModal(parent, UnityEngine::Vector2(60, x), [](HMUI::ModalView *modal) {}, true);
     modalSettingsChanged = false;
     
@@ -38,26 +38,42 @@ void ScorePercentage::initModalPopup(ScorePercentage::ModalPopup** modalUIPointe
     if (scorePercentageConfig.uiPauseCount) modalUI->pauseCountGUI = CreateText(modalUI->list->get_transform(), "");
     if (scorePercentageConfig.uiDatePlayed) modalUI->datePlayed = CreateText(modalUI->list->get_transform(), "");
 
-    modalUI->onScoreDetails = [modalUI](){
-        if (!modalUI->modal->isShown) modalUI->modal->Show(true, true, nullptr);
-        else modalUI->modal->Hide(true, nullptr);
-    };
-    modalUI->openButton = CreateUIButton(parent, "", "PracticeButton", {-47.0f, 10.0f}, {10.0f, 11.0f}, modalUI->onScoreDetails);
-    auto contentTransform = modalUI->openButton->get_transform()->Find(il2cpp_utils::newcsstr("Content"));
-    Object::Destroy(contentTransform->Find(il2cpp_utils::newcsstr("Text"))->get_gameObject());
+    modalUI->openButton = CreateUIButton(parent, "", "PracticeButton", {-47.0f, 10.0f}, {10.0f, 11.0f}, [modalUI](){
+        modalUI->modal->Show(true, true, nullptr);
+    });
+    auto contentTransform = modalUI->openButton->get_transform()->Find("Content");
+    Object::Destroy(contentTransform->Find("Text")->get_gameObject());
     Object::Destroy(contentTransform->GetComponent<LayoutElement*>());
-    Object::Destroy(modalUI->openButton->get_transform()->Find(il2cpp_utils::newcsstr("Underline"))->get_gameObject());
-    modalUI->openButton->set_name(il2cpp_utils::newcsstr("ScoreDetailsButton"));
-    auto iconGameObject = GameObject::New_ctor(il2cpp_utils::newcsstr("Icon"));
+    Object::Destroy(modalUI->openButton->get_transform()->Find("Underline")->get_gameObject());
+    modalUI->openButton->set_name("ScoreDetailsButton");
+    auto iconGameObject = GameObject::New_ctor("Icon");
     auto imageView = iconGameObject->AddComponent<HMUI::ImageView*>();
     auto iconTransform = imageView->get_rectTransform();
     iconTransform->SetParent(contentTransform, false);
-    imageView->set_material(QuestUI::ArrayUtil::First(Resources::FindObjectsOfTypeAll<Material*>(), [](Material* x) { return to_utf8(csstrtostr(x->get_name())) == "UINoGlow"; }));
+    imageView->set_material(QuestUI::ArrayUtil::First(Resources::FindObjectsOfTypeAll<Material*>(), [](Material* x) { return x->get_name() == "UINoGlow"; }));
     imageView->set_sprite(QuestUI::BeatSaberUI::Base64ToSprite(Sprites::scoreDetailsButton));
     imageView->set_preserveAspect(true);
     imageView->get_transform()->set_localScale({1.7f, 1.7f, 1.7f});
-    auto BG = QuestUI::ArrayUtil::First(modalUI->openButton->get_transform()->GetComponentsInChildren<HMUI::ImageView*>(), [](HMUI::ImageView* x) { return to_utf8(csstrtostr(x->get_name())) == "BG"; });
-    BG->skew = 0.0f;
+    auto BG = QuestUI::ArrayUtil::First(modalUI->openButton->get_transform()->GetComponentsInChildren<HMUI::ImageView*>(), [](HMUI::ImageView* x) { return x->get_name() == "BG"; });
+    BG->dyn__skew() = 0.0f;
+
+    modalUI->closeButton = CreateUIButton(modalUI->modal->get_transform(), "X", "PracticeButton", UnityEngine::Vector2(25, y + 2.3f), {8.0f, 8.0f}, [modalUI](){
+        noException = true;
+        modalUI->modal->Hide(true, nullptr);
+        noException = false;
+    });
+    Object::Destroy(modalUI->closeButton->GetComponentInChildren<LayoutElement*>());
+    Object::Destroy(modalUI->closeButton->get_transform()->Find("Underline")->get_gameObject());
+    Object::Destroy(modalUI->closeButton->get_transform()->GetComponentInChildren<TMPro::TextMeshProUGUI*>()->get_gameObject());
+    modalUI->closeButton->set_name("ScoreDetailsCloseButton");
+    auto closeBG = QuestUI::ArrayUtil::First(modalUI->closeButton->get_transform()->GetComponentsInChildren<HMUI::ImageView*>(), [](HMUI::ImageView* x) { return x->get_name() == "BG"; });
+    closeBG->dyn__skew() = 0.0f;
+    auto* transform = QuestUI::BeatSaberUI::CreateCanvas()->get_transform();
+    auto* closeText = CreateText(transform, "X", false, {0.0f, 1.87f}, {10.0f, 10.0f});
+    transform->set_localScale({1.2f, 1.2f, 0.0f});
+    closeText->set_alignment(TMPro::TextAlignmentOptions::Bottom);
+    transform->SetParent(modalUI->closeButton->get_transform(), false);
+    modalUI->modal->set_name("ScoreDetailsModal");
     *modalUIPointer = modalUI;
 }
 
@@ -69,7 +85,7 @@ void ScorePercentage::ModalPopup::updateInfo(){
     float truePP = maxPP != -1 ? PPCalculator::PP::CalculatePP(maxPP, currentDifficultyPercentageScore/100) : -1.0f;
     bool isValidPP = truePP != -1 && scorePercentageConfig.uiPP;
 
-    std::string highScoreText = to_utf8(csstrtostr(ScoreFormatter::Format(mapData.currentScore)));
+    std::string highScoreText = ScoreFormatter::Format(mapData.currentScore);
 
     std::string scoreText = createModalScoreText(highScoreText, currentDifficultyPercentageScore, truePP, isValidPP);
     std::string maxComboText = createComboText(mapData.maxCombo, mapData.isFC);
@@ -81,9 +97,27 @@ void ScorePercentage::ModalPopup::updateInfo(){
     
     score->SetText(il2cpp_utils::newcsstr(scoreText));
     maxCombo->SetText(il2cpp_utils::newcsstr(maxComboText));
-    if (scorePercentageConfig.uiPlayCount) playCount->SetText(il2cpp_utils::newcsstr(playCountText));
-    if (scorePercentageConfig.uiMissCount) missCount->SetText(il2cpp_utils::newcsstr(missCountText));
-    if (scorePercentageConfig.uiBadCutCount) badCutCount->SetText(il2cpp_utils::newcsstr(badCutCountText));
-    if (scorePercentageConfig.uiPauseCount) pauseCountGUI->SetText(il2cpp_utils::newcsstr(pauseCountText));
-    if (scorePercentageConfig.uiDatePlayed) datePlayed->SetText(il2cpp_utils::newcsstr(datePlayedText));
+    if (scorePercentageConfig.uiPlayCount) playCount->SetText(playCountText);
+    if (scorePercentageConfig.uiMissCount) missCount->SetText(missCountText);
+    if (scorePercentageConfig.uiBadCutCount) badCutCount->SetText(badCutCountText);
+    if (scorePercentageConfig.uiPauseCount) pauseCountGUI->SetText(pauseCountText);
+    if (scorePercentageConfig.uiDatePlayed) datePlayed->SetText(datePlayedText);
+}
+void ScorePercentage::ModalPopup::loadingInfo(){
+    score->SetText("loading...");
+    maxCombo->SetText("loading...");
+    if (scorePercentageConfig.uiPlayCount) playCount->SetText("loading...");
+    if (scorePercentageConfig.uiMissCount) missCount->SetText("loading...");
+    if (scorePercentageConfig.uiBadCutCount) badCutCount->SetText("loading...");
+    if (scorePercentageConfig.uiPauseCount) pauseCountGUI->SetText("loading...");
+    if (scorePercentageConfig.uiDatePlayed) datePlayed->SetText("loading...");
+}
+void ScorePercentage::ModalPopup::loadingFailed(){
+    score->SetText("failed ;(");
+    maxCombo->SetText("failed ;(");
+    if (scorePercentageConfig.uiPlayCount) playCount->SetText("failed ;(");
+    if (scorePercentageConfig.uiMissCount) missCount->SetText("failed ;(");
+    if (scorePercentageConfig.uiBadCutCount) badCutCount->SetText("failed ;(");
+    if (scorePercentageConfig.uiPauseCount) pauseCountGUI->SetText("failed ;(");
+    if (scorePercentageConfig.uiDatePlayed) datePlayed->SetText("failed ;(");
 }
