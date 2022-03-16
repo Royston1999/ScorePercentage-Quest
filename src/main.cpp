@@ -79,6 +79,7 @@
 #include "GlobalNamespace/ScoreModel_NoteScoreDefinition.hpp"
 #include "UnityEngine/Mathf.hpp"
 #include "GlobalNamespace/ScoreMultiplierCounter.hpp"
+#include "System/Threading/Tasks/ITaskCompletionAction.hpp"
 #include "GlobalNamespace/SoloFreePlayFlowCoordinator.hpp"
 
 using namespace QuestUI::BeatSaberUI;
@@ -103,8 +104,7 @@ std::string carlosID = "EjTRmgT3gfbSZZ8tz6As90";
 std::string myID = "JWSt5qMrClC7flwEEKi8hl";
 std::string playerDataPath = "/sdcard/Android/data/com.beatgames.beatsaber/files/PlayerData.dat";
 bool hasBeenNitod;
-bool inRoutine = false;
-UnityEngine::Coroutine* activePercentageRoutine;
+std::vector<int> routines;
 custom_types::Helpers::Coroutine FuckYouBeatSaviorData(LevelStatsView* self);
 custom_types::Helpers::Coroutine DoNewPercentageStuff(IDifficultyBeatmap* difficultyBeatmap);
 bool noException = false;
@@ -141,6 +141,23 @@ float LerpUnclamped(float a, float b, float t){
 	return a + (b - a) * t;
 }
 
+custom_types::Helpers::Coroutine FuckYouBeatSaviorData(LevelStatsView* self)
+{
+    bool beatBeyondSaving = false;
+    for (int i=0; i<3; i++){
+        if (i == 2){
+            auto beatMySavior = QuestUI::ArrayUtil::First(self->get_transform()->get_parent()->GetComponentsInChildren<Button*>(), [](Button* x) { return x->get_name() == "BeatSaviorDataDetailsButton"; });
+            if (beatMySavior && beatMySavior->get_gameObject()->get_active()){
+                beatBeyondSaving = true;
+                scoreDetailsUI->openButton->GetComponent<RectTransform*>()->set_anchoredPosition({-47.0f, 10.0f});
+            }
+        }
+        else co_yield nullptr;
+    }
+    if (!beatBeyondSaving) scoreDetailsUI->openButton->GetComponent<RectTransform*>()->set_anchoredPosition({-47.0f, 0.0f});
+    co_return;
+}
+
 int FixYourShitBeatGames(IReadonlyBeatmapData* data){
     std::vector<std::pair<int, float>> scoreValues;
     auto* notes = List<NoteData*>::New_ctor(); notes->AddRange(data->GetBeatmapDataItems<NoteData*>());
@@ -175,43 +192,21 @@ int FixYourShitBeatGames(IReadonlyBeatmapData* data){
     return maxScore;
 }
 
-
-custom_types::Helpers::Coroutine FuckYouBeatSaviorData(LevelStatsView* self)
-    {
-        bool beatBeyondSaving = false;
-        for (int i=0; i<3; i++){
-            if (i == 2){
-                auto beatMySavior = QuestUI::ArrayUtil::First(self->get_transform()->get_parent()->GetComponentsInChildren<Button*>(), [](Button* x) { return x->get_name() == "BeatSaviorDataDetailsButton"; });
-                if (beatMySavior && beatMySavior->get_gameObject()->get_active()){
-                    beatBeyondSaving = true;
-                    scoreDetailsUI->openButton->GetComponent<RectTransform*>()->set_anchoredPosition({-47.0f, 10.0f});
-                }
-            }
-            else co_yield nullptr;
-        }
-        if (!beatBeyondSaving) scoreDetailsUI->openButton->GetComponent<RectTransform*>()->set_anchoredPosition({-47.0f, 0.0f});
-        co_return;
-    }
-
 custom_types::Helpers::Coroutine DoNewPercentageStuff(IDifficultyBeatmap* difficultyBeatmap)
 {
-    inRoutine = true;
+    int crIndex = routines.size() + 1; routines.push_back(crIndex);
     if (scoreDetailsUI != nullptr) scoreDetailsUI->loadingInfo();
     if (model == nullptr) model = QuestUI::ArrayUtil::First(UnityEngine::Resources::FindObjectsOfTypeAll<BeatmapLevelsModel*>());
     auto* envInfo = model->GetLevelPreviewForLevelId(mapData.mapID)->get_environmentInfo();
     auto* result = difficultyBeatmap->GetBeatmapDataAsync(envInfo);
     while (!result->get_IsCompleted()) co_yield nullptr;
     auto* data = result->get_ResultOnSuccess();
-    // int maxScore = data != nullptr ? FixYourShitBeatGames(data) : 1;
+    if (routines.empty() || routines.size() != crIndex) co_return;
+    routines.clear(); std::vector<int>().swap(routines);
     int maxScore = data != nullptr ? ScoreModel::ComputeMaxMultipliedScoreForBeatmap(data) : 1;
     float currentPercentage = calculatePercentage(maxScore, mapData.currentScore);
-    mapData.currentPercentage = currentPercentage;
-    mapData.maxScore = maxScore;
-    if (scoreDetailsUI != nullptr){
-        if (data != nullptr) scoreDetailsUI->updateInfo();
-        else scoreDetailsUI->loadingFailed();
-    }
-    inRoutine = false;
+    mapData.currentPercentage = currentPercentage; mapData.maxScore = maxScore;
+    if (scoreDetailsUI != nullptr) data != nullptr ? scoreDetailsUI->updateInfo() : scoreDetailsUI->loadingFailed();
     co_return;
 }
 
@@ -219,13 +214,10 @@ void updateMapData(PlayerLevelStatsData* playerLevelStatsData, IDifficultyBeatma
     int currentScore = playerLevelStatsData->get_highScore();
     std::string mapID = playerLevelStatsData->get_levelID();
     std::string mapType = playerLevelStatsData->get_beatmapCharacteristic()->get_serializedName();
-    if (mapData.mapID == mapID && mapData.diff == difficultyBeatmap->get_difficulty() && mapData.mapType == mapType) return;
     mapData.mapID = mapID;
     int diff = difficultyBeatmap->get_difficultyRank();
     mapData.currentScore = currentScore;
-    if (inRoutine) GlobalNamespace::SharedCoroutineStarter::get_instance()->StopCoroutine(activePercentageRoutine);
-    inRoutine = false;
-    activePercentageRoutine = GlobalNamespace::SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(DoNewPercentageStuff(difficultyBeatmap)));
+    GlobalNamespace::SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(DoNewPercentageStuff(difficultyBeatmap)));
     mapData.diff = difficultyBeatmap->get_difficulty();
     mapData.mapType = mapType;
     mapData.isFC = playerLevelStatsData->get_fullCombo();
@@ -405,7 +397,7 @@ MAKE_HOOK_FIND_CLASS_UNSAFE_INSTANCE(GameplayCoreSceneSetupData_ctor, "", "Gamep
 {
     GameplayCoreSceneSetupData_ctor(self, difficultyBeatmap, previewBeatmapLevel, gameplayModifiers, playerSpecificSettings, practiceSettings, useTestNoteCutSoundEffects, environmentInfo, colorScheme, mainSettingsModel);
     auto* playerLevelStatsData = QuestUI::ArrayUtil::First(Resources::FindObjectsOfTypeAll<PlayerDataModel*>())->get_playerData()->GetPlayerLevelStatsData(difficultyBeatmap);
-    updateMapData(playerLevelStatsData, difficultyBeatmap);
+    if (mapData.mapID != playerLevelStatsData->get_levelID() || mapData.diff != difficultyBeatmap->get_difficulty() || mapData.mapType != playerLevelStatsData->get_beatmapCharacteristic()->get_serializedName()) updateMapData(playerLevelStatsData, difficultyBeatmap);
     pauseCount = 0;
     noException = true;
     if (scoreDetailsUI != nullptr) scoreDetailsUI->modal->Hide(true, nullptr);
