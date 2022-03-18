@@ -1,12 +1,26 @@
 #include <iomanip>
 #include <cmath>
+
+#include "ScoreDetailsModal.hpp"
+#include "ScoreUtils.hpp"
+#include "SettingsFlowCoordinator.hpp"
+#include "PPCalculator.hpp"
+#include "main.hpp"
+
 #include "questui/shared/QuestUI.hpp"
+
 #include "beatsaber-hook/shared/utils/hooking.hpp"
 #include "System/Action.hpp"
 #include "System/DateTime.hpp"
+#include "System/Threading/Tasks/Task_1.hpp"
+
 #include "UnityEngine/GameObject.hpp"
 #include "UnityEngine/Resources.hpp"
+#include "UnityEngine/SpriteRenderer.hpp"
+
 #include "TMPro/TextMeshProUGUI.hpp"
+#include "TMPro/TextMeshPro.hpp"
+
 #include "GlobalNamespace/ScoreFormatter.hpp"
 #include "GlobalNamespace/ResultsViewController.hpp"
 #include "GlobalNamespace/PlayerLevelStatsData.hpp"
@@ -31,14 +45,8 @@
 #include "GlobalNamespace/GameplayModifiers.hpp"
 #include "GlobalNamespace/ScoreModel.hpp"
 #include "GlobalNamespace/RankModel.hpp"
-#include "ScoreDetailsModal.hpp"
-#include "ScoreUtils.hpp"
-#include "SettingsFlowCoordinator.hpp"
-#include "PPCalculator.hpp"
-#include "main.hpp"
 #include "GlobalNamespace/PartyFreePlayFlowCoordinator.hpp"
 #include "GlobalNamespace/MultiplayerScoreRingItem.hpp"
-#include "GlobalNamespace/ScoreController.hpp"
 #include "GlobalNamespace/MultiplayerScoreRingManager.hpp"
 #include "GlobalNamespace/RelativeScoreAndImmediateRankCounter.hpp"
 #include "GlobalNamespace/IScoreController.hpp"
@@ -46,40 +54,25 @@
 #include "GlobalNamespace/MultiplayerScoreProvider.hpp"
 #include "GlobalNamespace/MultiplayerScoreProvider_RankedPlayer.hpp"
 #include "GlobalNamespace/MultiplayerConnectedPlayerScoreDiffText.hpp"
-#include "UnityEngine/SpriteRenderer.hpp"
-#include "TMPro/TextMeshPro.hpp"
-#include "UnityEngine/Events/UnityAction.hpp"
 #include "GlobalNamespace/DifficultyBeatmapSet.hpp"
 #include "GlobalNamespace/BeatmapLevelData.hpp"
-#include "GlobalNamespace/HMCache_2.hpp"
-#include "System/Collections/Generic/Dictionary_2.hpp"
-#include "System/Linq/Enumerable.hpp"
-#include "System/Collections/Generic/IEnumerable_1.hpp"
-#include "System/Threading/CancellationToken.hpp"
-#include "System/Threading/Tasks/Task_1.hpp"
-#include "System/Func_2.hpp"
 #include "GlobalNamespace/SharedCoroutineStarter.hpp"
 #include "GlobalNamespace/IPreviewBeatmapLevel.hpp"
-#include "System/Collections/Generic/Queue_1.hpp"
-#include "GlobalNamespace/IBeatmapDataAssetFileModel.hpp"
 #include "GlobalNamespace/IReadonlyBeatmapData.hpp"
 #include "GlobalNamespace/BeatmapLevelsModel.hpp"
 #include "GlobalNamespace/PlatformLeaderboardViewController.hpp"
 #include "GlobalNamespace/MainSettingsModelSO.hpp"
 #include "GlobalNamespace/IPreviewBeatmapLevel.hpp"
-#include "System/Threading/Tasks/Task_1.hpp"
 #include "GlobalNamespace/ScoreModel.hpp"
 #include "GlobalNamespace/IReadonlyBeatmapData.hpp"
 #include "GlobalNamespace/NoteData.hpp"
 #include "GlobalNamespace/SliderData.hpp"
-#include "System/Collections/Generic/LinkedList_1.hpp"
-#include "System/Collections/Generic/LinkedListNode_1.hpp"
-#include "GlobalNamespace/BeatmapDataItem.hpp"
-#include "GlobalNamespace/ScoreModel_MaxScoreCounterElement.hpp"
-#include "GlobalNamespace/ScoreModel_NoteScoreDefinition.hpp"
-#include "UnityEngine/Mathf.hpp"
-#include "GlobalNamespace/ScoreMultiplierCounter.hpp"
-#include "System/Threading/Tasks/ITaskCompletionAction.hpp"
+#include "GlobalNamespace/MultiplayerConnectedPlayerSongTimeSyncController.hpp"
+#include "GlobalNamespace/AudioTimeSyncController.hpp"
+#include "GlobalNamespace/HealthWarningFlowCoordinator.hpp"
+#include "GlobalNamespace/HealthWarningFlowCoordinator_InitData.hpp"
+#include "GlobalNamespace/GameScenesManager.hpp"
+#include "GlobalNamespace/PlayerAgreements.hpp"
 #include "GlobalNamespace/SoloFreePlayFlowCoordinator.hpp"
 
 using namespace QuestUI::BeatSaberUI;
@@ -100,14 +93,16 @@ TMPro::TextMeshProUGUI* rankDiffText = nullptr;
 IScoreController* scoreController = nullptr;
 BeatmapLevelsModel* model = nullptr;
 std::string nitoID = "QXzRo+cwkPArBeq+0i4yxw";
-std::string carlosID = "EjTRmgT3gfbSZZ8tz6As90";
-std::string myID = "JWSt5qMrClC7flwEEKi8hl";
-std::string playerDataPath = "/sdcard/Android/data/com.beatgames.beatsaber/files/PlayerData.dat";
 bool hasBeenNitod;
+bool hasDiedinMulti;
 std::vector<int> routines;
+std::vector<std::pair<int, float>> scoreValues;
+std::pair<int, int> indexScore;
+AudioTimeSyncController* timeController;
 custom_types::Helpers::Coroutine FuckYouBeatSaviorData(LevelStatsView* self);
 custom_types::Helpers::Coroutine DoNewPercentageStuff(IDifficultyBeatmap* difficultyBeatmap);
 bool noException = false;
+bool successfullySkipped = false;
 
 // Loads the config from disk using our modInfo, then returns it for use
 Configuration& getConfig() {
@@ -159,7 +154,7 @@ custom_types::Helpers::Coroutine FuckYouBeatSaviorData(LevelStatsView* self)
 }
 
 int FixYourShitBeatGames(IReadonlyBeatmapData* data){
-    std::vector<std::pair<int, float>> scoreValues;
+    scoreValues.clear(); std::vector<std::pair<int, float>>().swap(scoreValues);
     auto* notes = List<NoteData*>::New_ctor(); notes->AddRange(data->GetBeatmapDataItems<NoteData*>());
     auto* sliders = List<SliderData*>::New_ctor(); sliders->AddRange(data->GetBeatmapDataItems<SliderData*>());
     auto itr1 = notes->GetEnumerator();
@@ -187,8 +182,7 @@ int FixYourShitBeatGames(IReadonlyBeatmapData* data){
         multiplier = count < 2 ? 1 : count < 6 ? 2 : count < 14 ? 4 : 8;
         maxScore += p.first * multiplier;
     }
-    scoreValues.clear();
-    std::vector<std::pair<int, float>>().swap(scoreValues);
+    getLogger().info("max score: %i", maxScore);
     return maxScore;
 }
 
@@ -258,6 +252,7 @@ void createDifferenceTexts(ResultsViewController* self){
 
 MAKE_HOOK_MATCH(Menu, &LevelStatsView::ShowStats, void, LevelStatsView* self, IDifficultyBeatmap* difficultyBeatmap, PlayerData* playerData) {
     Menu(self, difficultyBeatmap, playerData);
+    // throw il2cpp_utils::RunMethodException("sc2ad still crashing my game :(", nullptr);
     if (noException) noException = false;
     if (playerData != nullptr)
     {
@@ -368,6 +363,7 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
 
 MAKE_HOOK_MATCH(MultiplayerResults, &ResultsTableCell::SetData, void, ResultsTableCell* self, int order, IConnectedPlayer* connectedPlayer, LevelCompletionResults* levelCompletionResults){
     MultiplayerResults(self, order, connectedPlayer, levelCompletionResults);
+    getLogger().info("estimated percentage: %.2f", calculatePercentage(indexScore.second, levelCompletionResults->dyn_modifiedScore()));
     bool passedLevel = levelCompletionResults->dyn_levelEndStateType() == 1 ? true : false;
     if (scorePercentageConfig.LevelEndRank){
         if (!self->dyn__rankText()->get_richText()) toggleMultiResultsTableFormat(true, self);
@@ -402,7 +398,9 @@ MAKE_HOOK_FIND_CLASS_UNSAFE_INSTANCE(GameplayCoreSceneSetupData_ctor, "", "Gamep
     noException = true;
     if (scoreDetailsUI != nullptr) scoreDetailsUI->modal->Hide(true, nullptr);
     scoreController = nullptr;
+    timeController = nullptr;
     hasBeenNitod = false;
+    hasDiedinMulti = false;
 }
 
 MAKE_HOOK_MATCH(PPTime, &MainMenuViewController::DidActivate, void, MainMenuViewController* self, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
@@ -421,29 +419,48 @@ MAKE_HOOK_MATCH(MenuTransitionsHelper_RestartGame, &GlobalNamespace::MenuTransit
 }
 
 MAKE_HOOK_MATCH(ScoreRingManager_UpdateScoreText, &MultiplayerScoreRingManager::UpdateScore, void, MultiplayerScoreRingManager* self, IConnectedPlayer* playerToUpdate){
-    MultiplayerScoreProvider::RankedPlayer* player;
-    
-    auto* scoreRingItem = self->GetScoreRingItem(playerToUpdate->get_userId());
-    if (!hasBeenNitod && playerToUpdate->get_userId() == nitoID){
-        hasBeenNitod = true;
-        scoreRingItem->SetName("MUNCHKIN");
+    if (scorePercentageConfig.LevelEndRank){
+        MultiplayerScoreProvider::RankedPlayer* player;
+        auto* scoreRingItem = self->GetScoreRingItem(playerToUpdate->get_userId());
+        if (!hasBeenNitod && playerToUpdate->get_userId() == nitoID){
+            hasBeenNitod = true;
+            scoreRingItem->SetName("MUNCHKIN");
+        }
+        bool flag = self->dyn__scoreProvider()->TryGetScore(playerToUpdate->get_userId(), player);
+        if (!flag || player->get_isFailed()){
+            scoreRingItem->SetScore("X");
+            return;
+        }
+        else if (timeController != nullptr){
+            float timeValue;
+            float currentSongTime = timeController->dyn__songTime();
+            int multiplier = 0;
+            for (int i = indexScore.first; i<scoreValues.size(); i++){
+                if (indexScore.first == -1) break;
+                timeValue = scoreValues[i].second;
+                int index = i + 1;
+                if (timeValue < currentSongTime){
+                    multiplier = index < 2 ? 1 : index < 6 ? 2 : index < 14 ? 4 : 8;
+                    indexScore.second += scoreValues[i].first * multiplier;
+                    if (i == scoreValues.size() -1) indexScore.first = -1;
+                }
+                else {
+                    indexScore.first = i;
+                    break;
+                }
+            }
+            int userScore = player->get_score();
+            std::string userPercentage = Round(calculatePercentage(indexScore.second, userScore), 2);
+            scoreRingItem->SetScore(std::to_string(userScore) + " (" + userPercentage + "%)");
+        }
     }
-    bool flag = self->dyn__scoreProvider()->TryGetScore(playerToUpdate->get_userId(), player);
-    if (!flag || player->get_isFailed()){
-        scoreRingItem->SetScore("X");
-        return;
-	}
-    if (scoreController != nullptr){
-        int userScore = player->get_score();
-        int maxPossibleScore = scoreController->get_immediateMaxPossibleMultipliedScore();
-        std::string userPercentage = Round(calculatePercentage(maxPossibleScore, userScore), 2);
-        scoreRingItem->SetScore(std::to_string(userScore) + " (" + userPercentage + "%)");
-    }
+    else ScoreRingManager_UpdateScoreText(self, playerToUpdate);
+    // if (!hasDiedinMulti && flag && player->get_isMe() && player->get_isFailed()) hasDiedinMulti = true;
 }
 
 MAKE_HOOK_MATCH(ScoreDiffText, &MultiplayerConnectedPlayerScoreDiffText::AnimateScoreDiff, void, MultiplayerConnectedPlayerScoreDiffText* self, int scoreDiff){
     ScoreDiffText(self, scoreDiff);
-    if (scoreController != nullptr){
+    if (timeController != nullptr && scorePercentageConfig.LevelEndRank){
         if(self->dyn__onPlatformText()->get_enableWordWrapping()){
             self->dyn__onPlatformText()->set_richText(true);
             self->dyn__onPlatformText()->set_enableWordWrapping(false);
@@ -451,16 +468,28 @@ MAKE_HOOK_MATCH(ScoreDiffText, &MultiplayerConnectedPlayerScoreDiffText::Animate
             transform->set_localScale({transform->get_localScale().x *1.7f, transform->get_localScale().y, 0.0f});
         }
         std::string baseText = self->dyn__onPlatformText()->get_text();
-        int maxPossibleScore = scoreController->get_immediateMaxPossibleMultipliedScore();
+        int maxPossibleScore = indexScore.second;
         std::string posneg = (scoreDiff >= 0) ? "+" : "";
         std::string percentageText = " (" + posneg + Round(calculatePercentage(maxPossibleScore, scoreDiff), 2) + "%)";
         self->dyn__onPlatformText()->SetText(baseText + percentageText);
     }
+    else if (!scorePercentageConfig.LevelEndRank){
+        if(!self->dyn__onPlatformText()->get_enableWordWrapping()){
+            self->dyn__onPlatformText()->set_richText(false);
+            self->dyn__onPlatformText()->set_enableWordWrapping(true);
+            auto* transform = (UnityEngine::RectTransform*)(self->dyn__backgroundSpriteRenderer()->get_transform());
+            transform->set_localScale({transform->get_localScale().x /1.7f, transform->get_localScale().y, 0.0f});
+        }
+    }
 }
 
-MAKE_HOOK_MATCH(ScoreStuff, &MultiplayerLocalActiveClient::HandleScoreDidChange, void, MultiplayerLocalActiveClient* self, int multipliedScore, int modifiedScore){
-    ScoreStuff(self, multipliedScore, modifiedScore);
-    if (scoreController == nullptr) scoreController = self->dyn__scoreController();
+MAKE_HOOK_MATCH(ScoreStuff, &MultiplayerLocalActiveClient::Start, void, MultiplayerLocalActiveClient* self){
+    ScoreStuff(self);
+    if (timeController == nullptr){
+        timeController = self->dyn__audioTimeSyncController();
+        scoreController = self->dyn__scoreController();
+        indexScore = std::make_pair(0, 0);
+    }
 }
 
 MAKE_HOOK_MATCH(Modal_Hide, &HMUI::ModalView::Hide, void, HMUI::ModalView* self, bool animated, System::Action* finishedCallback){
@@ -485,9 +514,23 @@ MAKE_HOOK_MATCH(LeaderBoard_Deactivate, &SoloFreePlayFlowCoordinator::BackButton
         scoreDetailsUI->modal->Hide(false, nullptr);
     }
 }
-
+// quite a small hook
 MAKE_HOOK_MATCH(ScoreModel_MaxScore, &ScoreModel::ComputeMaxMultipliedScoreForBeatmap, int, IReadonlyBeatmapData* beatmapData){
     return FixYourShitBeatGames(beatmapData);
+}
+
+MAKE_HOOK_MATCH(HealthSkip, &HealthWarningFlowCoordinator::DidActivate, void, HealthWarningFlowCoordinator* self, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling){
+    HealthSkip(self, firstActivation, addedToHierarchy, screenSystemEnabling);
+    bool eula = self->dyn__playerDataModel()->get_playerData()->get_playerAgreements()->AgreedToEula();
+    bool helth = self->dyn__playerDataModel()->get_playerData()->get_playerAgreements()->AgreedToHealthAndSafety();
+    if (eula && helth){
+        successfullySkipped = true;
+        auto* nextScene = self->dyn__initData()->dyn_nextScenesTransitionSetupData();
+        self->dyn__gameScenesManager()->ReplaceScenes(nextScene, nullptr, 0.0f, nullptr, nullptr);
+    }
+}
+MAKE_HOOK_MATCH(FuckOff, &HealthWarningFlowCoordinator::HandleHealthWarningViewControllerDidFinish, void, HealthWarningFlowCoordinator* self){
+    if (!successfullySkipped) FuckOff(self);
 }
 
 // Called later on in the game loading - a good time to install function hooks
@@ -513,5 +556,8 @@ extern "C" void load() {
     INSTALL_HOOK(getLogger(), LeaderBoard_Activate);
     INSTALL_HOOK(getLogger(), LeaderBoard_Deactivate);
     INSTALL_HOOK_ORIG(getLogger(), ScoreModel_MaxScore);
+
+    INSTALL_HOOK(getLogger(), HealthSkip);
+    INSTALL_HOOK(getLogger(), FuckOff);
     getLogger().info("Installed all hooks!");
 }
