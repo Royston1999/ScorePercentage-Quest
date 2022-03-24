@@ -3,7 +3,7 @@
         {
             "defines": [
                 "ID=\"scorepercentage\"",
-                "VERSION=\"3.0.0\"",
+                "VERSION=\"3.1.0\"",
                 "__GNUC__",
                 "__aarch64__"
             ],
@@ -13,7 +13,7 @@
                 "${workspaceFolder}/include",
                 "${workspaceFolder}/extern/**",
                 "${workspaceFolder}/extern/libil2cpp/il2cpp/libil2cpp",
-                "C:/Users/royston/Desktop/Quest_Modding/android-ndk-r23/**"
+                "C:/Users/royst/OneDrive/Desktop/BeatSaberModding/android-ndk-r23b/**"
             ],
             "name": "Quest",
             "cStandard": "c11",

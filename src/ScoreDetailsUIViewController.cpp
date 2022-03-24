@@ -10,8 +10,9 @@ UnityEngine::UI::Toggle* missCountToggle = nullptr;
 UnityEngine::UI::Toggle* badCutCountToggle = nullptr;
 UnityEngine::UI::Toggle* pauseCountToggle = nullptr;
 UnityEngine::UI::Toggle* datePlayedToggle = nullptr;
+UnityEngine::UI::Toggle* alwaysOnToggle = nullptr;
 UnityEngine::UI::VerticalLayoutGroup* scoreDetailsContainer;
-Array<TMPro::TextMeshProUGUI*>* toggleText;
+ArrayW<TMPro::TextMeshProUGUI*> toggleText;
 
 void toggleToggles(bool value){
     toggleText = scoreDetailsContainer->get_transform()->GetComponentsInChildren<TMPro::TextMeshProUGUI*>();
@@ -21,16 +22,17 @@ void toggleToggles(bool value){
     badCutCountToggle->set_interactable(value);
     pauseCountToggle->set_interactable(value);
     datePlayedToggle->set_interactable(value);
+    alwaysOnToggle->set_interactable(value);
     
     if (!value) {
-        for(int i=0; i<toggleText->get_Length(); i++) 
-            if ((i!=0 && i%3==0) || (i!=1 && i%3==2 && (*toggleText)[i]->get_alpha()>0))
-                (*toggleText)[i]->set_color(UnityEngine::Color::get_gray());
+        for(int i=0; i<toggleText.Length(); i++) 
+            if ((i!=0 && i%3==0) || (i!=1 && i%3==2 && toggleText[i]->get_alpha()>0))
+            toggleText[i]->set_color(UnityEngine::Color::get_gray());
     }
     else { 
-        for(int i=0; i<toggleText->get_Length(); i++) 
-            if ((i!=0 && i%3==0) || (i!=1 && i%3==2 && (*toggleText)[i]->get_alpha()>0))
-                (*toggleText)[i]->set_color(UnityEngine::Color::get_white());
+        for(int i=0; i<toggleText.Length(); i++) 
+            if ((i!=0 && i%3==0) || (i!=1 && i%3==2 && toggleText[i]->get_alpha()>0))
+                toggleText[i]->set_color(UnityEngine::Color::get_white());
     }
 }
 
@@ -99,6 +101,13 @@ void ScoreDetailsUI::Views::ScoreDetailsUIViewController::DidActivate(
             });
 
         AddHoverHint(datePlayedToggle->get_gameObject(), "Displays the date on which the most recent score was set");
+
+        alwaysOnToggle = CreateToggle(scoreDetailsContainer->get_transform(), "UI always open", scorePercentageConfig.alwaysOpen, 
+            [](bool value) {
+                setBool(getConfig().config, "alwaysOpen", value, false);
+            });
+
+        AddHoverHint(alwaysOnToggle->get_gameObject(), "UI Popup is always popped up");
 
         if (!scorePercentageConfig.MenuHighScore) toggleToggles(false);
     }

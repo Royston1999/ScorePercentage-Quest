@@ -30,3 +30,4 @@ extern ModInfo modInfo;
 extern BeatMapData mapData;
 extern ScorePercentageConfig scorePercentageConfig;
 extern bool modalSettingsChanged;
+extern bool noException;
