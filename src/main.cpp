@@ -168,7 +168,7 @@ int FixYourShitBeatGames(IReadonlyBeatmapData* data){
     while (itr2.MoveNext()){
         auto* sliderData = itr2.get_Current();
         if (sliderData->get_sliderType() == 1){
-            scoreValues.push_back(std::make_pair(85, sliderData->get_time()));
+            if (sliderData->get_hasHeadNote()) scoreValues.push_back(std::make_pair(85, sliderData->get_time()));
             for (int i = 1; i < sliderData->get_sliceCount(); i++){
                 float t = i / (sliderData->get_sliceCount() - 1);
                 scoreValues.push_back(std::make_pair(20, LerpUnclamped(sliderData->get_time(), sliderData->get_tailTime(), t)));
@@ -211,7 +211,7 @@ void updateMapData(PlayerLevelStatsData* playerLevelStatsData, IDifficultyBeatma
     mapData.mapID = mapID;
     int diff = difficultyBeatmap->get_difficultyRank();
     mapData.currentScore = currentScore;
-    GlobalNamespace::SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(DoNewPercentageStuff(difficultyBeatmap)));
+    SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(DoNewPercentageStuff(difficultyBeatmap)));
     mapData.diff = difficultyBeatmap->get_difficulty();
     mapData.mapType = mapType;
     mapData.isFC = playerLevelStatsData->get_fullCombo();
@@ -237,7 +237,7 @@ void toggleModalVisibility(bool value, LevelStatsView* self){
         noException = true;
         scoreDetailsUI->modal->Hide(true, nullptr);
     }
-    GlobalNamespace::SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(FuckYouBeatSaviorData(self)));
+    SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(FuckYouBeatSaviorData(self)));
 }
 
 void createDifferenceTexts(ResultsViewController* self){
@@ -284,7 +284,7 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
     bool isParty = flowthingy != nullptr ? flowthingy->get_isActivated() ? true : false : false;
 
     // funny thing i wonder if anyone notices
-    if (firstActivation) CreateText(self->get_transform(), "<size=150%>KNOBHEAD</size>", UnityEngine::Vector2(20, 20));
+    if (firstActivation) CreateText(self->get_transform(), "<size=150%>KNOBHEAD</size>", Vector2(20, 20));
 
     // Default Info Texts
     std::string rankText = self->dyn__rankText()->get_text();
@@ -294,7 +294,7 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
     bool isValidScore = !(self->get_practice() || mapData.currentScore == 0 || isParty);
 
     // only update stuff if level was cleared
-    if (self->dyn__levelCompletionResults()->dyn_levelEndStateType() == GlobalNamespace::LevelCompletionResults::LevelEndStateType::Cleared)
+    if (self->dyn__levelCompletionResults()->dyn_levelEndStateType() == LevelCompletionResults::LevelEndStateType::Cleared)
     {
         if (scoreDiffText == nullptr) createDifferenceTexts(self);
 
@@ -379,7 +379,7 @@ MAKE_HOOK_MATCH(MultiplayerResults, &ResultsTableCell::SetData, void, ResultsTab
     else{
         if (self->dyn__rankText()->get_richText()) toggleMultiResultsTableFormat(false, self);
         if (!passedLevel) self->dyn__rankText()->SetText("F");
-        else self->dyn__rankText()->SetText(GlobalNamespace::RankModel::GetRankName(levelCompletionResults->dyn_rank()));
+        else self->dyn__rankText()->SetText(RankModel::GetRankName(levelCompletionResults->dyn_rank()));
     }
     if (connectedPlayer->get_isMe() && (levelCompletionResults->dyn_modifiedScore() - mapData.currentScore > 0) && passedLevel){
         int misses = levelCompletionResults->dyn_missedCount();
@@ -408,7 +408,7 @@ MAKE_HOOK_MATCH(PPTime, &MainMenuViewController::DidActivate, void, MainMenuView
     if (firstActivation) PPCalculator::PP::Initialize();
 }
 
-MAKE_HOOK_MATCH(MenuTransitionsHelper_RestartGame, &GlobalNamespace::MenuTransitionsHelper::RestartGame, void, GlobalNamespace::MenuTransitionsHelper* self, System::Action_1<Zenject::DiContainer*>* finishCallback)
+MAKE_HOOK_MATCH(MenuTransitionsHelper_RestartGame, &MenuTransitionsHelper::RestartGame, void, MenuTransitionsHelper* self, System::Action_1<Zenject::DiContainer*>* finishCallback)
 {
     scoreDetailsUI = nullptr;
     origRankText = nullptr;
@@ -464,7 +464,7 @@ MAKE_HOOK_MATCH(ScoreDiffText, &MultiplayerConnectedPlayerScoreDiffText::Animate
         if(self->dyn__onPlatformText()->get_enableWordWrapping()){
             self->dyn__onPlatformText()->set_richText(true);
             self->dyn__onPlatformText()->set_enableWordWrapping(false);
-            auto* transform = (UnityEngine::RectTransform*)(self->dyn__backgroundSpriteRenderer()->get_transform());
+            auto* transform = (RectTransform*)(self->dyn__backgroundSpriteRenderer()->get_transform());
             transform->set_localScale({transform->get_localScale().x *1.7f, transform->get_localScale().y, 0.0f});
         }
         std::string baseText = self->dyn__onPlatformText()->get_text();
@@ -477,7 +477,7 @@ MAKE_HOOK_MATCH(ScoreDiffText, &MultiplayerConnectedPlayerScoreDiffText::Animate
         if(!self->dyn__onPlatformText()->get_enableWordWrapping()){
             self->dyn__onPlatformText()->set_richText(false);
             self->dyn__onPlatformText()->set_enableWordWrapping(true);
-            auto* transform = (UnityEngine::RectTransform*)(self->dyn__backgroundSpriteRenderer()->get_transform());
+            auto* transform = (RectTransform*)(self->dyn__backgroundSpriteRenderer()->get_transform());
             transform->set_localScale({transform->get_localScale().x /1.7f, transform->get_localScale().y, 0.0f});
         }
     }
@@ -522,7 +522,7 @@ MAKE_HOOK_MATCH(ScoreModel_MaxScore, &ScoreModel::ComputeMaxMultipliedScoreForBe
 MAKE_HOOK_MATCH(HealthSkip, &HealthWarningFlowCoordinator::DidActivate, void, HealthWarningFlowCoordinator* self, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling){
     HealthSkip(self, firstActivation, addedToHierarchy, screenSystemEnabling);
     bool eula = self->dyn__playerDataModel()->get_playerData()->get_playerAgreements()->AgreedToEula();
-    bool helth = self->dyn__playerDataModel()->get_playerData()->get_playerAgreements()->AgreedToHealthAndSafety();
+    bool helth = self->dyn__playerDataModel()->get_playerData()->get_playerAgreements()->AgreedToPrivacyPolicy();
     if (eula && helth){
         successfullySkipped = true;
         auto* nextScene = self->dyn__initData()->dyn_nextScenesTransitionSetupData();

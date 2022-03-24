@@ -27,7 +27,7 @@ static std::unordered_set<std::string> songsAllowingPositiveModifiers = {
     "2FDDB136BDA7F9E29B4CB6621D6D8E0F8A43B126", // Overkill Nuketime
     "27FCBAB3FB731B16EABA14A5D039EEFFD7BD44C9" // Overkill Kry
 };
-const std::string PP_DATA_URI = "https://cdn.pulselane.dev/raw_pp.json";
+const std::string PP_DATA_URI = "https://raw.githubusercontent.com/Royston1999/ScorePercentage-Quest/new_features/raw_pp.json";
 
 void PPCalculator::PP::Initialize() {
     request = UnityEngine::Networking::UnityWebRequest::Get(il2cpp_utils::newcsstr(PP_DATA_URI));

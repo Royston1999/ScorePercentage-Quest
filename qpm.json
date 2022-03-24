@@ -4,7 +4,7 @@
   "info": {
     "name": "Score Percentage",
     "id": "scorepercentage",
-    "version": "3.0.0",
+    "version": "3.1.0",
     "url": null,
     "additionalData": {}
   },
@@ -21,7 +21,7 @@
     },
     {
       "id": "beatsaber-hook",
-      "versionRange": "=3.6.8",
+      "versionRange": "=3.7.4",
       "additionalData": {
         "extraFiles": [
           "src/inline-hook"
