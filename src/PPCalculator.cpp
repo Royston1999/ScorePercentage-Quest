@@ -1,33 +1,46 @@
 #include "PPCalculator.hpp"
 
-const int PP_CURVE_SIZE = 19;
+const int PP_CURVE_SIZE = 32;
 float ppCurve[PP_CURVE_SIZE][2] = {
     {0, 0},
-    {.45f, .015f},
-    {.50f, .03f},
-    {.55f, .06f},
-    {.60f, .105f},
-    {.65f, .15f},
-    {.70f, .22f},
-    {.75f, .3f},
-    {.80f, .42f},
-    {.86f, .6f},
-    {.9f, .78f},
-    {.925f, .905f},
-    {.945f, 1.015f},
-    {.95f, 1.046f},
-    {.96f, 1.115f},
-    {.97f, 1.2f},
-    {.98f, 1.29f},
-    {.99f, 1.39f},
-    {1.0f, 1.5f}
+    {.6f, .25f},
+    {.65f, .29f},
+    {.7f, .34f},
+    {.75f, .40f},
+    {.8f, .47f},
+    {.825f, .51f},
+    {.85f, .57f},
+    {.875f, .655f},
+    {.9f, .75f},
+    {.91f, .79f},
+    {.92f, .835f},
+    {.93f, 0.885f},
+    {.94f, 0.94f},
+    {.95f, 1.0f},
+    {.955f, 1.045f},
+    {.96f, 1.11f},
+    {.965f, 1.20f},
+    {.97f, 1.31f},
+    {.9725f, 1.37f},
+    {.975f, 1.45f},
+    {.9775f, 1.57f},
+    {.98f, 1.71f},
+    {.9825f, 1.88f},
+    {.985f, 2.1f},
+    {.9875f, 2.38f},
+    {.99f, 2.73f},
+    {.9925f, 3.17f},
+    {.995f, 3.76f},
+    {.9975f, 4.7f},
+    {.999f, 5.8f},
+    {1.0f, 7.0f}
 };
-float ppCurveSlopes[18];
+float ppCurveSlopes[31];
 static std::unordered_set<std::string> songsAllowingPositiveModifiers = {
     "2FDDB136BDA7F9E29B4CB6621D6D8E0F8A43B126", // Overkill Nuketime
     "27FCBAB3FB731B16EABA14A5D039EEFFD7BD44C9" // Overkill Kry
 };
-const std::string PP_DATA_URI = "https://raw.githubusercontent.com/Royston1999/ScorePercentage-Quest/new_features/raw_pp.json";
+const std::string PP_DATA_URI = "https://raw.githubusercontent.com/Royston1999/ScorePercentage-Quest/main/raw_pp.json";
 
 void PPCalculator::PP::Initialize() {
     request = UnityEngine::Networking::UnityWebRequest::Get(il2cpp_utils::newcsstr(PP_DATA_URI));
@@ -65,7 +78,7 @@ void PPCalculator::PP::HandleWebRequestCompleted() {
 }
 
 float RatioOfMaxPP(float accuracy) {
-    if (accuracy >= 1.0) return 1.5f;
+    if (accuracy >= 1.0) return 7.0f;
     if (accuracy <= 0.0f) return 0.0f;
 
     int i = 0;
