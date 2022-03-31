@@ -136,7 +136,7 @@ void loadConfig() {
     ConfigHelper::LoadConfig(scorePercentageConfig, getConfig().config);
 }
 
-float LerpUnclamped(float a, float b, float t){
+float LerpU(float a, float b, float t){
 	return a + (b - a) * t;
 }
 
@@ -184,8 +184,7 @@ int FixYourShitBeatGames(IReadonlyBeatmapData* data){
         if (sliderData->sliderType == 1){
             if (sliderData->hasHeadNote) scoreValues.push_back(std::make_pair(85, sliderData->time));
             for (int i = 1; i < sliderData->sliceCount; i++){
-                float t = i / (sliderData->sliceCount - 1);
-                scoreValues.push_back(std::make_pair(20, LerpUnclamped(sliderData->time, sliderData->tailTime, t)));
+                scoreValues.push_back(std::make_pair(20, LerpU(sliderData->time, sliderData->tailTime, i / (sliderData->sliceCount - 1))));
             }
         }
     }
@@ -210,7 +209,7 @@ custom_types::Helpers::Coroutine DoNewPercentageStuff(IDifficultyBeatmap* diffic
     while (!result->get_IsCompleted()) co_yield nullptr;
     auto* data = result->get_ResultOnSuccess();
     if (routines.empty() || routines.size() != crIndex) co_return;
-    ClearVector<int>(routines);
+    ClearVector<int>(&routines);
     int maxScore = data != nullptr ? ScoreModel::ComputeMaxMultipliedScoreForBeatmap(data) : 1;
     float currentPercentage = calculatePercentage(maxScore, mapData.currentScore);
     mapData.currentPercentage = currentPercentage; mapData.maxScore = maxScore;
