@@ -1,6 +1,10 @@
 #include <iomanip>
 #include <cmath>
 
+#ifndef USE_CODEGEN_FIELDS
+#define USE_CODEGEN_FIELDS
+#endif
+
 #include "ScoreDetailsModal.hpp"
 #include "ScoreUtils.hpp"
 #include "SettingsFlowCoordinator.hpp"
@@ -153,25 +157,35 @@ custom_types::Helpers::Coroutine FuckYouBeatSaviorData(LevelStatsView* self)
     co_return;
 }
 
+template<class T>
+List<T>* GetBeatmapDataItems(IReadonlyBeatmapData* data){
+    auto* beatmapDataItems = List<T>::New_ctor(); 
+    beatmapDataItems->AddRange(data->GetBeatmapDataItems<T>());
+    return beatmapDataItems;
+}
+
+template<class T>
+void ClearVector(std::vector<T>* vector){
+    vector->clear(); std::vector<T>().swap(*vector);
+}
+
 int FixYourShitBeatGames(IReadonlyBeatmapData* data){
-    scoreValues.clear(); std::vector<std::pair<int, float>>().swap(scoreValues);
-    auto* notes = List<NoteData*>::New_ctor(); notes->AddRange(data->GetBeatmapDataItems<NoteData*>());
-    auto* sliders = List<SliderData*>::New_ctor(); sliders->AddRange(data->GetBeatmapDataItems<SliderData*>());
-    auto itr1 = notes->GetEnumerator();
-    while (itr1.MoveNext()){
-        auto* noteData = itr1.get_Current();
-        if (noteData->get_scoringType() != -1 && noteData->get_scoringType() != 0 && noteData->get_scoringType() != 4){
-            scoreValues.push_back(std::make_pair(115, noteData->get_time()));
+    ClearVector<std::pair<int, float>>(&scoreValues);
+    auto* notes = GetBeatmapDataItems<NoteData*>(data);
+    auto* sliders = GetBeatmapDataItems<SliderData*>(data);
+    for (int i = 0; i < notes->size; i++){
+        NoteData* noteData = notes->items[i];
+        if (noteData->scoringType != -1 && noteData->scoringType != 0 && noteData->scoringType != 4){
+            scoreValues.push_back(std::make_pair(115, noteData->time));
         }
     }
-    auto itr2 = sliders->GetEnumerator();
-    while (itr2.MoveNext()){
-        auto* sliderData = itr2.get_Current();
-        if (sliderData->get_sliderType() == 1){
-            if (sliderData->get_hasHeadNote()) scoreValues.push_back(std::make_pair(85, sliderData->get_time()));
-            for (int i = 1; i < sliderData->get_sliceCount(); i++){
-                float t = i / (sliderData->get_sliceCount() - 1);
-                scoreValues.push_back(std::make_pair(20, LerpUnclamped(sliderData->get_time(), sliderData->get_tailTime(), t)));
+    for (int i = 0; i < sliders->size; i++){
+        SliderData* sliderData = sliders->items[i];
+        if (sliderData->sliderType == 1){
+            if (sliderData->hasHeadNote) scoreValues.push_back(std::make_pair(85, sliderData->time));
+            for (int i = 1; i < sliderData->sliceCount; i++){
+                float t = i / (sliderData->sliceCount - 1);
+                scoreValues.push_back(std::make_pair(20, LerpUnclamped(sliderData->time, sliderData->tailTime, t)));
             }
         }
     }
@@ -196,7 +210,7 @@ custom_types::Helpers::Coroutine DoNewPercentageStuff(IDifficultyBeatmap* diffic
     while (!result->get_IsCompleted()) co_yield nullptr;
     auto* data = result->get_ResultOnSuccess();
     if (routines.empty() || routines.size() != crIndex) co_return;
-    routines.clear(); std::vector<int>().swap(routines);
+    ClearVector<int>(routines);
     int maxScore = data != nullptr ? ScoreModel::ComputeMaxMultipliedScoreForBeatmap(data) : 1;
     float currentPercentage = calculatePercentage(maxScore, mapData.currentScore);
     mapData.currentPercentage = currentPercentage; mapData.maxScore = maxScore;
@@ -205,8 +219,8 @@ custom_types::Helpers::Coroutine DoNewPercentageStuff(IDifficultyBeatmap* diffic
 }
 
 void updateMapData(PlayerLevelStatsData* playerLevelStatsData, IDifficultyBeatmap* difficultyBeatmap){
-    int currentScore = playerLevelStatsData->get_highScore();
-    std::string mapID = playerLevelStatsData->get_levelID();
+    int currentScore = playerLevelStatsData->highScore;
+    std::string mapID = playerLevelStatsData->levelID;
     std::string mapType = playerLevelStatsData->get_beatmapCharacteristic()->get_serializedName();
     mapData.mapID = mapID;
     int diff = difficultyBeatmap->get_difficultyRank();
@@ -214,9 +228,9 @@ void updateMapData(PlayerLevelStatsData* playerLevelStatsData, IDifficultyBeatma
     SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(DoNewPercentageStuff(difficultyBeatmap)));
     mapData.diff = difficultyBeatmap->get_difficulty();
     mapData.mapType = mapType;
-    mapData.isFC = playerLevelStatsData->get_fullCombo();
-    mapData.playCount = playerLevelStatsData->get_playCount();
-    mapData.maxCombo = playerLevelStatsData->get_maxCombo();
+    mapData.isFC = playerLevelStatsData->fullCombo;
+    mapData.playCount = playerLevelStatsData->playCount;
+    mapData.maxCombo = playerLevelStatsData->maxCombo;
     mapData.idString = mapType.compare("Standard") != 0 ? mapType + std::to_string(diff) : std::to_string(diff);
 }
 
@@ -393,7 +407,7 @@ MAKE_HOOK_FIND_CLASS_UNSAFE_INSTANCE(GameplayCoreSceneSetupData_ctor, "", "Gamep
 {
     GameplayCoreSceneSetupData_ctor(self, difficultyBeatmap, previewBeatmapLevel, gameplayModifiers, playerSpecificSettings, practiceSettings, useTestNoteCutSoundEffects, environmentInfo, colorScheme, mainSettingsModel);
     auto* playerLevelStatsData = QuestUI::ArrayUtil::First(Resources::FindObjectsOfTypeAll<PlayerDataModel*>())->get_playerData()->GetPlayerLevelStatsData(difficultyBeatmap);
-    if (mapData.mapID != playerLevelStatsData->get_levelID() || mapData.diff != difficultyBeatmap->get_difficulty() || mapData.mapType != playerLevelStatsData->get_beatmapCharacteristic()->get_serializedName()) updateMapData(playerLevelStatsData, difficultyBeatmap);
+    if (mapData.mapID != playerLevelStatsData->levelID || mapData.diff != difficultyBeatmap->get_difficulty() || mapData.mapType != playerLevelStatsData->beatmapCharacteristic->serializedName) updateMapData(playerLevelStatsData, difficultyBeatmap);
     pauseCount = 0;
     noException = true;
     if (scoreDetailsUI != nullptr) scoreDetailsUI->modal->Hide(true, nullptr);
