@@ -1,10 +1,6 @@
 #include <iomanip>
 #include <cmath>
 
-#ifndef USE_CODEGEN_FIELDS
-#define USE_CODEGEN_FIELDS
-#endif
-
 #include "ScoreDetailsModal.hpp"
 #include "ScoreUtils.hpp"
 #include "SettingsFlowCoordinator.hpp"
@@ -78,6 +74,10 @@
 #include "GlobalNamespace/GameScenesManager.hpp"
 #include "GlobalNamespace/PlayerAgreements.hpp"
 #include "GlobalNamespace/SoloFreePlayFlowCoordinator.hpp"
+#include "GlobalNamespace/MultiplayerConnectedPlayerBeatmapObjectEventManager.hpp"
+#include "GlobalNamespace/MultiplayerConnectedPlayerSongTimeSyncController.hpp"
+#include "UnityEngine/AudioSource.hpp"
+#include "UnityEngine/AudioClip.hpp"
 
 using namespace QuestUI::BeatSaberUI;
 using namespace UnityEngine::UI;
@@ -94,15 +94,14 @@ BeatMapData mapData;
 Il2CppString* origRankText = nullptr;
 TMPro::TextMeshProUGUI* scoreDiffText = nullptr;
 TMPro::TextMeshProUGUI* rankDiffText = nullptr;
-IScoreController* scoreController = nullptr;
 BeatmapLevelsModel* model = nullptr;
 std::string nitoID = "QXzRo+cwkPArBeq+0i4yxw";
 bool hasBeenNitod;
-bool hasDiedinMulti;
 std::vector<int> routines;
 std::vector<std::pair<int, float>> scoreValues;
 std::pair<int, int> indexScore;
 AudioTimeSyncController* timeController;
+std::map<StringW, MultiplayerConnectedPlayerSongTimeSyncController*> players;
 custom_types::Helpers::Coroutine FuckYouBeatSaviorData(LevelStatsView* self);
 custom_types::Helpers::Coroutine DoNewPercentageStuff(IDifficultyBeatmap* difficultyBeatmap);
 bool noException = false;
@@ -175,14 +174,13 @@ int FixYourShitBeatGames(IReadonlyBeatmapData* data){
     auto* sliders = GetBeatmapDataItems<SliderData*>(data);
     for (int i = 0; i < notes->size; i++){
         NoteData* noteData = notes->items[i];
-        if (noteData->scoringType != -1 && noteData->scoringType != 0 && noteData->scoringType != 4){
-            scoreValues.push_back(std::make_pair(115, noteData->time));
+        if (noteData->scoringType != -1 && noteData->scoringType != 0){
+            scoreValues.push_back(std::make_pair(noteData->scoringType == 4 ? 85 : 115, noteData->time));
         }
     }
     for (int i = 0; i < sliders->size; i++){
         SliderData* sliderData = sliders->items[i];
         if (sliderData->sliderType == 1){
-            if (sliderData->hasHeadNote) scoreValues.push_back(std::make_pair(85, sliderData->time));
             for (int i = 1; i < sliderData->sliceCount; i++){
                 scoreValues.push_back(std::make_pair(20, LerpU(sliderData->time, sliderData->tailTime, i / (sliderData->sliceCount - 1))));
             }
@@ -297,7 +295,7 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
     bool isParty = flowthingy != nullptr ? flowthingy->get_isActivated() ? true : false : false;
 
     // funny thing i wonder if anyone notices
-    if (firstActivation) CreateText(self->get_transform(), "<size=150%>KNOBHEAD</size>", Vector2(20, 20));
+    if (!self->dyn__wasActivatedBefore()) CreateText(self->get_transform(), "<size=150%>KNOBHEAD2</size>", Vector2(20, 20));
 
     // Default Info Texts
     std::string rankText = self->dyn__rankText()->get_text();
@@ -312,7 +310,7 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
         if (scoreDiffText == nullptr) createDifferenceTexts(self);
 
         resultScore = self->dyn__levelCompletionResults()->dyn_modifiedScore();
-        resultPercentage = calculatePercentage(mapData.maxScore, resultScore);
+        resultPercentage = mapData.maxScore > 0 ? calculatePercentage(mapData.maxScore, resultScore) : 0.0f;
 
         // probably stops stuff from breaking
         self->dyn__rankText()->set_autoSizeTextContainer(false);
@@ -410,10 +408,9 @@ MAKE_HOOK_FIND_CLASS_UNSAFE_INSTANCE(GameplayCoreSceneSetupData_ctor, "", "Gamep
     pauseCount = 0;
     noException = true;
     if (scoreDetailsUI != nullptr) scoreDetailsUI->modal->Hide(true, nullptr);
-    scoreController = nullptr;
     timeController = nullptr;
     hasBeenNitod = false;
-    hasDiedinMulti = false;
+    players.clear();
 }
 
 MAKE_HOOK_MATCH(PPTime, &MainMenuViewController::DidActivate, void, MainMenuViewController* self, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
@@ -444,31 +441,33 @@ MAKE_HOOK_MATCH(ScoreRingManager_UpdateScoreText, &MultiplayerScoreRingManager::
             scoreRingItem->SetScore("X");
             return;
         }
-        else if (timeController != nullptr){
-            float timeValue;
-            float currentSongTime = timeController->dyn__songTime();
-            int multiplier = 0;
-            for (int i = indexScore.first; i<scoreValues.size(); i++){
-                if (indexScore.first == -1) break;
-                timeValue = scoreValues[i].second;
-                int index = i + 1;
-                if (timeValue < currentSongTime){
-                    multiplier = index < 2 ? 1 : index < 6 ? 2 : index < 14 ? 4 : 8;
-                    indexScore.second += scoreValues[i].first * multiplier;
-                    if (i == scoreValues.size() -1) indexScore.first = -1;
-                }
-                else {
-                    indexScore.first = i;
-                    break;
-                }
+        auto x = players.find(playerToUpdate->get_userId());
+        float currentSongTime;
+        if (x != players.end()) currentSongTime = x->second->songTime;
+        else if (playerToUpdate->get_isMe()) currentSongTime = timeController->dyn__songTime();
+        else return;
+        float timeValue;
+        int multiplier = 0;
+        for (int i = indexScore.first; i<scoreValues.size(); i++){
+            if (indexScore.first == -1) break;
+            timeValue = scoreValues[i].second;
+            int index = i + 1;
+            if (timeValue < currentSongTime){
+                multiplier = index < 2 ? 1 : index < 6 ? 2 : index < 14 ? 4 : 8;
+                indexScore.second += scoreValues[i].first * multiplier;
+                if (i == scoreValues.size() -1) indexScore.first = -1;
             }
-            int userScore = player->get_score();
-            std::string userPercentage = Round(calculatePercentage(indexScore.second, userScore), 2);
-            scoreRingItem->SetScore(std::to_string(userScore) + " (" + userPercentage + "%)");
+            else {
+                indexScore.first = i;
+                break;
+            }
         }
+        int userScore = player->get_score();
+        std::string userPercentage = indexScore.second != 0 ? Round(calculatePercentage(indexScore.second, userScore), 2) : "0.00";
+        scoreRingItem->SetScore(std::to_string(userScore) + " (" + userPercentage + "%)");
+        
     }
     else ScoreRingManager_UpdateScoreText(self, playerToUpdate);
-    // if (!hasDiedinMulti && flag && player->get_isMe() && player->get_isFailed()) hasDiedinMulti = true;
 }
 
 MAKE_HOOK_MATCH(ScoreDiffText, &MultiplayerConnectedPlayerScoreDiffText::AnimateScoreDiff, void, MultiplayerConnectedPlayerScoreDiffText* self, int scoreDiff){
@@ -478,7 +477,7 @@ MAKE_HOOK_MATCH(ScoreDiffText, &MultiplayerConnectedPlayerScoreDiffText::Animate
             self->dyn__onPlatformText()->set_richText(true);
             self->dyn__onPlatformText()->set_enableWordWrapping(false);
             auto* transform = (RectTransform*)(self->dyn__backgroundSpriteRenderer()->get_transform());
-            transform->set_localScale({transform->get_localScale().x *1.7f, transform->get_localScale().y, 0.0f});
+            transform->set_localScale({transform->get_localScale().x *2.0f, transform->get_localScale().y, 0.0f});
         }
         std::string baseText = self->dyn__onPlatformText()->get_text();
         int maxPossibleScore = indexScore.second;
@@ -491,18 +490,20 @@ MAKE_HOOK_MATCH(ScoreDiffText, &MultiplayerConnectedPlayerScoreDiffText::Animate
             self->dyn__onPlatformText()->set_richText(false);
             self->dyn__onPlatformText()->set_enableWordWrapping(true);
             auto* transform = (RectTransform*)(self->dyn__backgroundSpriteRenderer()->get_transform());
-            transform->set_localScale({transform->get_localScale().x /1.7f, transform->get_localScale().y, 0.0f});
+            transform->set_localScale({transform->get_localScale().x /2.0f, transform->get_localScale().y, 0.0f});
         }
     }
 }
 
 MAKE_HOOK_MATCH(ScoreStuff, &MultiplayerLocalActiveClient::Start, void, MultiplayerLocalActiveClient* self){
     ScoreStuff(self);
-    if (timeController == nullptr){
-        timeController = self->dyn__audioTimeSyncController();
-        scoreController = self->dyn__scoreController();
-        indexScore = std::make_pair(0, 0);
-    }
+    timeController = self->dyn__audioTimeSyncController();
+    indexScore = std::make_pair(0, 0);
+}
+
+MAKE_HOOK_MATCH(FUCKME, &MultiplayerConnectedPlayerSongTimeSyncController::StartSong, void, MultiplayerConnectedPlayerSongTimeSyncController* self, float songStartSyncTime){
+    FUCKME(self, songStartSyncTime);
+    players.insert(std::make_pair(self->connectedPlayer->get_userId(), self));
 }
 
 MAKE_HOOK_MATCH(Modal_Hide, &HMUI::ModalView::Hide, void, HMUI::ModalView* self, bool animated, System::Action* finishedCallback){
@@ -568,6 +569,7 @@ extern "C" void load() {
     INSTALL_HOOK(getLogger(), Modal_Hide);
     INSTALL_HOOK(getLogger(), LeaderBoard_Activate);
     INSTALL_HOOK(getLogger(), LeaderBoard_Deactivate);
+    INSTALL_HOOK(getLogger(), FUCKME);
     INSTALL_HOOK_ORIG(getLogger(), ScoreModel_MaxScore);
 
     INSTALL_HOOK(getLogger(), HealthSkip);

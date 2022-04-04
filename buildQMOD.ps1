@@ -1,5 +1,5 @@
 Param(
-    [String] $qmodname="",
+    [String] $qmodName="",
 
     [Parameter(Mandatory=$false)]
     [Switch] $clean,
@@ -20,6 +20,11 @@ if ($help -eq $true) {
     exit
 }
 
+$mod = "./mod.json"
+$modJson = Get-Content $mod -Raw | ConvertFrom-Json
+
+$qmodName = "ScorePercentage_v" + $modJson.version
+
 if ($qmodName -eq "")
 {
     echo "Give a proper qmod name and try again"
@@ -34,9 +39,6 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 echo "Creating qmod from mod.json"
-
-$mod = "./mod.json"
-$modJson = Get-Content $mod -Raw | ConvertFrom-Json
 
 $filelist = @($mod)
 
