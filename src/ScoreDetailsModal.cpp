@@ -4,6 +4,8 @@
 #include "UnityEngine/Material.hpp"
 #include "UnityEngine/Rect.hpp"
 #include "UnityEngine/UI/ColorBlock.hpp"
+#include "main.hpp"
+
 using namespace QuestUI::BeatSaberUI;
 using namespace UnityEngine;
 using namespace UnityEngine::UI;
@@ -38,7 +40,7 @@ void ScorePercentage::initModalPopup(ScorePercentage::ModalPopup** modalUIPointe
     if (scorePercentageConfig.uiPauseCount) modalUI->pauseCountGUI = CreateText(modalUI->list->get_transform(), "");
     if (scorePercentageConfig.uiDatePlayed) modalUI->datePlayed = CreateText(modalUI->list->get_transform(), "");
 
-    modalUI->openButton = CreateUIButton(parent, "", "PracticeButton", {-47.0f, 10.0f}, {10.0f, 11.0f}, [modalUI](){
+    modalUI->openButton = CreateUIButton(parent, "", "PracticeButton", {-47.0f, 0.0f}, {10.0f, 11.0f}, [modalUI](){
         modalUI->modal->Show(true, true, nullptr);
     });
     auto contentTransform = modalUI->openButton->get_transform()->Find("Content");

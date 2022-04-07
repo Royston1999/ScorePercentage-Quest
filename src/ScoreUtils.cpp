@@ -45,6 +45,7 @@ namespace ScorePercentage::Utils{
 
     double calculatePercentage(int maxScore, int resultScore)
     {
+        if (maxScore == 0) return 0.0f;
         double resultPercentage = (double)(100 / (double)maxScore * (double)resultScore);
         return resultPercentage;
     }

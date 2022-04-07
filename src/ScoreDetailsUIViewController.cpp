@@ -23,24 +23,13 @@ void toggleToggles(bool value){
     pauseCountToggle->set_interactable(value);
     datePlayedToggle->set_interactable(value);
     alwaysOnToggle->set_interactable(value);
-    
-    if (!value) {
-        for(int i=0; i<toggleText.Length(); i++) 
-            if ((i!=0 && i%3==0) || (i!=1 && i%3==2 && toggleText[i]->get_alpha()>0))
-            toggleText[i]->set_color(UnityEngine::Color::get_gray());
-    }
-    else { 
-        for(int i=0; i<toggleText.Length(); i++) 
-            if ((i!=0 && i%3==0) || (i!=1 && i%3==2 && toggleText[i]->get_alpha()>0))
-                toggleText[i]->set_color(UnityEngine::Color::get_white());
-    }
+    auto colour = value ? UnityEngine::Color::get_white() : UnityEngine::Color::get_gray();
+    for(int i=0; i<toggleText.Length(); i++) 
+        if ((i!=0 && i%3==0) || (i!=1 && i%3==2 && toggleText[i]->get_alpha()>0))
+            toggleText[i]->set_color(colour);
 }
 
-void ScoreDetailsUI::Views::ScoreDetailsUIViewController::DidActivate(
-    bool firstActivation,
-    bool addedToHierarchy,
-    bool screenSystemEnabling
-) {
+void ScoreDetailsUI::Views::ScoreDetailsUIViewController::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling){
     using namespace GlobalNamespace;
     using namespace UnityEngine;
     using namespace QuestUI::BeatSaberUI;
@@ -109,6 +98,7 @@ void ScoreDetailsUI::Views::ScoreDetailsUIViewController::DidActivate(
 
         AddHoverHint(alwaysOnToggle->get_gameObject(), "UI Popup is always popped up");
 
+        // if (FUCKINGBEATSAVIORSUCKMYCOCK) alwaysOnToggle->get_transform()->get_parent()->get_gameObject()->SetActive(false);
         if (!scorePercentageConfig.MenuHighScore) toggleToggles(false);
     }
 }

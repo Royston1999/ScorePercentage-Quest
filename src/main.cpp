@@ -5,21 +5,20 @@
 #include "ScoreUtils.hpp"
 #include "SettingsFlowCoordinator.hpp"
 #include "PPCalculator.hpp"
+#include "MapUtils.hpp"
+#include "MultiplayerHooks.hpp"
 #include "main.hpp"
 
 #include "questui/shared/QuestUI.hpp"
 
 #include "beatsaber-hook/shared/utils/hooking.hpp"
-#include "System/Action.hpp"
+
 #include "System/DateTime.hpp"
-#include "System/Threading/Tasks/Task_1.hpp"
 
 #include "UnityEngine/GameObject.hpp"
 #include "UnityEngine/Resources.hpp"
-#include "UnityEngine/SpriteRenderer.hpp"
 
 #include "TMPro/TextMeshProUGUI.hpp"
-#include "TMPro/TextMeshPro.hpp"
 
 #include "GlobalNamespace/ScoreFormatter.hpp"
 #include "GlobalNamespace/ResultsViewController.hpp"
@@ -35,49 +34,17 @@
 #include "GlobalNamespace/LevelStatsView.hpp"
 #include "GlobalNamespace/PlayerData.hpp"
 #include "GlobalNamespace/IDifficultyBeatmap.hpp"
-#include "GlobalNamespace/IBeatmapLevel.hpp"
-#include "GlobalNamespace/BeatmapData.hpp"
-#include "GlobalNamespace/MultiplayerResultsViewController.hpp"
-#include "GlobalNamespace/ResultsTableView.hpp"
-#include "GlobalNamespace/ResultsTableCell.hpp"
-#include "GlobalNamespace/IConnectedPlayer.hpp"
 #include "GlobalNamespace/PlayerDataModel.hpp"
 #include "GlobalNamespace/GameplayModifiers.hpp"
-#include "GlobalNamespace/ScoreModel.hpp"
-#include "GlobalNamespace/RankModel.hpp"
 #include "GlobalNamespace/PartyFreePlayFlowCoordinator.hpp"
-#include "GlobalNamespace/MultiplayerScoreRingItem.hpp"
-#include "GlobalNamespace/MultiplayerScoreRingManager.hpp"
-#include "GlobalNamespace/RelativeScoreAndImmediateRankCounter.hpp"
-#include "GlobalNamespace/IScoreController.hpp"
-#include "GlobalNamespace/MultiplayerLocalActiveClient.hpp"
-#include "GlobalNamespace/MultiplayerScoreProvider.hpp"
-#include "GlobalNamespace/MultiplayerScoreProvider_RankedPlayer.hpp"
-#include "GlobalNamespace/MultiplayerConnectedPlayerScoreDiffText.hpp"
-#include "GlobalNamespace/DifficultyBeatmapSet.hpp"
-#include "GlobalNamespace/BeatmapLevelData.hpp"
 #include "GlobalNamespace/SharedCoroutineStarter.hpp"
-#include "GlobalNamespace/IPreviewBeatmapLevel.hpp"
-#include "GlobalNamespace/IReadonlyBeatmapData.hpp"
-#include "GlobalNamespace/BeatmapLevelsModel.hpp"
 #include "GlobalNamespace/PlatformLeaderboardViewController.hpp"
 #include "GlobalNamespace/MainSettingsModelSO.hpp"
-#include "GlobalNamespace/IPreviewBeatmapLevel.hpp"
 #include "GlobalNamespace/ScoreModel.hpp"
-#include "GlobalNamespace/IReadonlyBeatmapData.hpp"
-#include "GlobalNamespace/NoteData.hpp"
-#include "GlobalNamespace/SliderData.hpp"
-#include "GlobalNamespace/MultiplayerConnectedPlayerSongTimeSyncController.hpp"
-#include "GlobalNamespace/AudioTimeSyncController.hpp"
-#include "GlobalNamespace/HealthWarningFlowCoordinator.hpp"
-#include "GlobalNamespace/HealthWarningFlowCoordinator_InitData.hpp"
-#include "GlobalNamespace/GameScenesManager.hpp"
-#include "GlobalNamespace/PlayerAgreements.hpp"
 #include "GlobalNamespace/SoloFreePlayFlowCoordinator.hpp"
-#include "GlobalNamespace/MultiplayerConnectedPlayerBeatmapObjectEventManager.hpp"
-#include "GlobalNamespace/MultiplayerConnectedPlayerSongTimeSyncController.hpp"
-#include "UnityEngine/AudioSource.hpp"
-#include "UnityEngine/AudioClip.hpp"
+#include "GlobalNamespace/GameplayModifiersModelSO.hpp"
+#include "GlobalNamespace/GameplayModifierParamsSO.hpp"
+#include "UnityEngine/WaitForSeconds.hpp"
 
 using namespace QuestUI::BeatSaberUI;
 using namespace UnityEngine::UI;
@@ -94,18 +61,11 @@ BeatMapData mapData;
 Il2CppString* origRankText = nullptr;
 TMPro::TextMeshProUGUI* scoreDiffText = nullptr;
 TMPro::TextMeshProUGUI* rankDiffText = nullptr;
-BeatmapLevelsModel* model = nullptr;
-std::string nitoID = "QXzRo+cwkPArBeq+0i4yxw";
-bool hasBeenNitod;
-std::vector<int> routines;
-std::vector<std::pair<int, float>> scoreValues;
-std::pair<int, int> indexScore;
-AudioTimeSyncController* timeController;
-std::map<StringW, MultiplayerConnectedPlayerSongTimeSyncController*> players;
 custom_types::Helpers::Coroutine FuckYouBeatSaviorData(LevelStatsView* self);
-custom_types::Helpers::Coroutine DoNewPercentageStuff(IDifficultyBeatmap* difficultyBeatmap);
 bool noException = false;
 bool successfullySkipped = false;
+bool leaderboardFirstActivation = false;
+bool FUCKINGBEATSAVIORSUCKMYCOCK;
 
 // Loads the config from disk using our modInfo, then returns it for use
 Configuration& getConfig() {
@@ -135,110 +95,29 @@ void loadConfig() {
     ConfigHelper::LoadConfig(scorePercentageConfig, getConfig().config);
 }
 
-float LerpU(float a, float b, float t){
-	return a + (b - a) * t;
-}
-
 custom_types::Helpers::Coroutine FuckYouBeatSaviorData(LevelStatsView* self)
 {
     bool beatBeyondSaving = false;
     for (int i=0; i<3; i++){
         if (i == 2){
-            auto beatMySavior = QuestUI::ArrayUtil::First(self->get_transform()->get_parent()->GetComponentsInChildren<Button*>(), [](Button* x) { return x->get_name() == "BeatSaviorDataDetailsButton"; });
+            auto* beatMySavior = QuestUI::ArrayUtil::First(self->get_transform()->get_parent()->GetComponentsInChildren<Button*>(), [](Button* x) { return x->get_name() == "BeatSaviorDataDetailsButton"; });
             if (beatMySavior && beatMySavior->get_gameObject()->get_active()){
                 beatBeyondSaving = true;
+                getLogger().info("what??");
                 scoreDetailsUI->openButton->GetComponent<RectTransform*>()->set_anchoredPosition({-47.0f, 10.0f});
             }
         }
         else co_yield nullptr;
     }
     if (!beatBeyondSaving) scoreDetailsUI->openButton->GetComponent<RectTransform*>()->set_anchoredPosition({-47.0f, 0.0f});
+    if (scoreDetailsUI != nullptr && scorePercentageConfig.alwaysOpen && leaderboardFirstActivation){
+        noException = true;
+        scoreDetailsUI->modal->Hide(false, nullptr);
+        co_yield reinterpret_cast<System::Collections::IEnumerator*>(UnityEngine::WaitForSeconds::New_ctor(0.4f));
+    }
+    if (self->get_isActiveAndEnabled() && scoreDetailsUI->hasValidScoreData && scorePercentageConfig.alwaysOpen && scorePercentageConfig.MenuHighScore) scoreDetailsUI->modal->Show(true, true, nullptr);
+    leaderboardFirstActivation = false;
     co_return;
-}
-
-template<class T>
-List<T>* GetBeatmapDataItems(IReadonlyBeatmapData* data){
-    auto* beatmapDataItems = List<T>::New_ctor(); 
-    beatmapDataItems->AddRange(data->GetBeatmapDataItems<T>());
-    return beatmapDataItems;
-}
-
-template<class T>
-void ClearVector(std::vector<T>* vector){
-    vector->clear(); std::vector<T>().swap(*vector);
-}
-
-int FixYourShitBeatGames(IReadonlyBeatmapData* data){
-    ClearVector<std::pair<int, float>>(&scoreValues);
-    auto* notes = GetBeatmapDataItems<NoteData*>(data);
-    auto* sliders = GetBeatmapDataItems<SliderData*>(data);
-    for (int i = 0; i < notes->size; i++){
-        NoteData* noteData = notes->items[i];
-        if (noteData->scoringType != -1 && noteData->scoringType != 0){
-            scoreValues.push_back(std::make_pair(noteData->scoringType == 4 ? 85 : 115, noteData->time));
-        }
-    }
-    for (int i = 0; i < sliders->size; i++){
-        SliderData* sliderData = sliders->items[i];
-        if (sliderData->sliderType == 1){
-            for (int i = 1; i < sliderData->sliceCount; i++){
-                scoreValues.push_back(std::make_pair(20, LerpU(sliderData->time, sliderData->tailTime, i / (sliderData->sliceCount - 1))));
-            }
-        }
-    }
-    std::sort(scoreValues.begin(), scoreValues.end(), [](auto &left, auto &right) { return left.second < right.second; });
-    int count = 0, multiplier = 0, maxScore = 0;
-    for (auto& p : scoreValues){
-        count++;
-        multiplier = count < 2 ? 1 : count < 6 ? 2 : count < 14 ? 4 : 8;
-        maxScore += p.first * multiplier;
-    }
-    getLogger().info("max score: %i", maxScore);
-    return maxScore;
-}
-
-custom_types::Helpers::Coroutine DoNewPercentageStuff(IDifficultyBeatmap* difficultyBeatmap)
-{
-    int crIndex = routines.size() + 1; routines.push_back(crIndex);
-    if (scoreDetailsUI != nullptr) scoreDetailsUI->loadingInfo();
-    if (model == nullptr) model = QuestUI::ArrayUtil::First(UnityEngine::Resources::FindObjectsOfTypeAll<BeatmapLevelsModel*>());
-    auto* envInfo = model->GetLevelPreviewForLevelId(mapData.mapID)->get_environmentInfo();
-    auto* result = difficultyBeatmap->GetBeatmapDataAsync(envInfo);
-    while (!result->get_IsCompleted()) co_yield nullptr;
-    auto* data = result->get_ResultOnSuccess();
-    if (routines.empty() || routines.size() != crIndex) co_return;
-    ClearVector<int>(&routines);
-    int maxScore = data != nullptr ? ScoreModel::ComputeMaxMultipliedScoreForBeatmap(data) : 1;
-    float currentPercentage = calculatePercentage(maxScore, mapData.currentScore);
-    mapData.currentPercentage = currentPercentage; mapData.maxScore = maxScore;
-    if (scoreDetailsUI != nullptr) data != nullptr ? scoreDetailsUI->updateInfo() : scoreDetailsUI->loadingFailed();
-    co_return;
-}
-
-void updateMapData(PlayerLevelStatsData* playerLevelStatsData, IDifficultyBeatmap* difficultyBeatmap){
-    int currentScore = playerLevelStatsData->highScore;
-    std::string mapID = playerLevelStatsData->levelID;
-    std::string mapType = playerLevelStatsData->get_beatmapCharacteristic()->get_serializedName();
-    mapData.mapID = mapID;
-    int diff = difficultyBeatmap->get_difficultyRank();
-    mapData.currentScore = currentScore;
-    SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(DoNewPercentageStuff(difficultyBeatmap)));
-    mapData.diff = difficultyBeatmap->get_difficulty();
-    mapData.mapType = mapType;
-    mapData.isFC = playerLevelStatsData->fullCombo;
-    mapData.playCount = playerLevelStatsData->playCount;
-    mapData.maxCombo = playerLevelStatsData->maxCombo;
-    mapData.idString = mapType.compare("Standard") != 0 ? mapType + std::to_string(diff) : std::to_string(diff);
-}
-
-void toggleMultiResultsTableFormat(bool value, ResultsTableCell* cell){
-    cell->dyn__rankText()->set_enableWordWrapping(!value);
-    cell->dyn__rankText()->set_richText(value);
-    cell->dyn__scoreText()->set_richText(value);
-    cell->dyn__scoreText()->set_enableWordWrapping(!value);
-    int multiplier = value ? 1 : -1;
-    cell->dyn__scoreText()->get_transform()->set_localPosition(cell->dyn__scoreText()->get_transform()->get_localPosition() + UnityEngine::Vector3(multiplier * -5, 0, 0));
-    cell->dyn__rankText()->get_transform()->set_localPosition(cell->dyn__rankText()->get_transform()->get_localPosition() + UnityEngine::Vector3(multiplier * -2, 0, 0));
 }
 
 void toggleModalVisibility(bool value, LevelStatsView* self){
@@ -248,7 +127,8 @@ void toggleModalVisibility(bool value, LevelStatsView* self){
         noException = true;
         scoreDetailsUI->modal->Hide(true, nullptr);
     }
-    SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(FuckYouBeatSaviorData(self)));
+    if (FUCKINGBEATSAVIORSUCKMYCOCK) SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(FuckYouBeatSaviorData(self)));
+    else if (self->get_isActiveAndEnabled() && scoreDetailsUI->hasValidScoreData && scorePercentageConfig.alwaysOpen && scorePercentageConfig.MenuHighScore && !scoreDetailsUI->modal->isShown) scoreDetailsUI->modal->Show(true, true, nullptr);
 }
 
 void createDifferenceTexts(ResultsViewController* self){
@@ -269,14 +149,13 @@ MAKE_HOOK_MATCH(Menu, &LevelStatsView::ShowStats, void, LevelStatsView* self, ID
     {
         if (scoreDetailsUI == nullptr || modalSettingsChanged) ScorePercentage::initModalPopup(&scoreDetailsUI, self->get_transform());
         auto* playerLevelStatsData = playerData->GetPlayerLevelStatsData(difficultyBeatmap);
-        updateMapData(playerLevelStatsData, difficultyBeatmap);
+        ScorePercentage::MapUtils::updateMapData(playerData, difficultyBeatmap);
         if (playerLevelStatsData->get_validScore())
         {
             ConfigHelper::LoadBeatMapInfo(mapData.mapID, mapData.idString);
-            if (scorePercentageConfig.MenuHighScore) toggleModalVisibility(true, self);
+            if (scorePercentageConfig.MenuHighScore && playerLevelStatsData->highScore > 0) toggleModalVisibility(true, self);
         }
-        if (!scorePercentageConfig.MenuHighScore || !playerLevelStatsData->get_validScore()) toggleModalVisibility(false, self);
-        if (self->get_isActiveAndEnabled() && scoreDetailsUI->hasValidScoreData && scorePercentageConfig.alwaysOpen && scorePercentageConfig.MenuHighScore) scoreDetailsUI->modal->Show(true, true, nullptr);
+        if (!scorePercentageConfig.MenuHighScore || !playerLevelStatsData->get_validScore() || playerLevelStatsData->highScore < 1) toggleModalVisibility(false, self);
     }
 }
 
@@ -295,7 +174,7 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
     bool isParty = flowthingy != nullptr ? flowthingy->get_isActivated() ? true : false : false;
 
     // funny thing i wonder if anyone notices
-    if (!self->dyn__wasActivatedBefore()) CreateText(self->get_transform(), "<size=150%>KNOBHEAD2</size>", Vector2(20, 20));
+    if (firstActivation) CreateText(self->get_transform(), "<size=150%>KNOBHEAD</size>", Vector2(20, 20));
 
     // Default Info Texts
     std::string rankText = self->dyn__rankText()->get_text();
@@ -310,7 +189,7 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
         if (scoreDiffText == nullptr) createDifferenceTexts(self);
 
         resultScore = self->dyn__levelCompletionResults()->dyn_modifiedScore();
-        resultPercentage = mapData.maxScore > 0 ? calculatePercentage(mapData.maxScore, resultScore) : 0.0f;
+        resultPercentage = calculatePercentage(mapData.maxScore, resultScore);
 
         // probably stops stuff from breaking
         self->dyn__rankText()->set_autoSizeTextContainer(false);
@@ -372,50 +251,31 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
     }
 }
 
-MAKE_HOOK_MATCH(MultiplayerResults, &ResultsTableCell::SetData, void, ResultsTableCell* self, int order, IConnectedPlayer* connectedPlayer, LevelCompletionResults* levelCompletionResults){
-    MultiplayerResults(self, order, connectedPlayer, levelCompletionResults);
-    getLogger().info("estimated percentage: %.2f", calculatePercentage(indexScore.second, levelCompletionResults->dyn_modifiedScore()));
-    bool passedLevel = levelCompletionResults->dyn_levelEndStateType() == 1 ? true : false;
-    if (scorePercentageConfig.LevelEndRank){
-        if (!self->dyn__rankText()->get_richText()) toggleMultiResultsTableFormat(true, self);
-        bool isNoFail = levelCompletionResults->dyn_gameplayModifiers()->get_noFailOn0Energy() && levelCompletionResults->dyn_energy() == 0;
-        std::string percentageText = Round(calculatePercentage(mapData.maxScore, levelCompletionResults->dyn_modifiedScore()), 2);
-        self->dyn__rankText()->SetText(percentageText + "<size=75%>%</size>");
-        std::string score = self->dyn__scoreText()->get_text();
-        std::string preText = isNoFail ? "NF" + tab : !passedLevel ? "F" + tab : "";
-        int totalMisses = levelCompletionResults->dyn_missedCount() + levelCompletionResults->dyn_badCutsCount();
-        std::string missText = levelCompletionResults->dyn_fullCombo() ? "FC" : preText + "<color=red>X</color><size=65%> </size>" + std::to_string(totalMisses);
-        self->dyn__scoreText()->SetText(missText + tab + score);
-    }
-    else{
-        if (self->dyn__rankText()->get_richText()) toggleMultiResultsTableFormat(false, self);
-        if (!passedLevel) self->dyn__rankText()->SetText("F");
-        else self->dyn__rankText()->SetText(RankModel::GetRankName(levelCompletionResults->dyn_rank()));
-    }
-    if (connectedPlayer->get_isMe() && (levelCompletionResults->dyn_modifiedScore() - mapData.currentScore > 0) && passedLevel){
-        int misses = levelCompletionResults->dyn_missedCount();
-        int badCut = levelCompletionResults->dyn_badCutsCount();
-        std::string currentTime = System::DateTime::get_UtcNow().ToLocalTime().ToString("D");
-        ConfigHelper::UpdateBeatMapInfo(mapData.mapID, mapData.idString, misses, badCut, pauseCount, currentTime);
-    }
-}
-
 MAKE_HOOK_FIND_CLASS_UNSAFE_INSTANCE(GameplayCoreSceneSetupData_ctor, "", "GameplayCoreSceneSetupData", ".ctor", void, GameplayCoreSceneSetupData* self, IDifficultyBeatmap* difficultyBeatmap, IPreviewBeatmapLevel* previewBeatmapLevel, GameplayModifiers* gameplayModifiers, PlayerSpecificSettings* playerSpecificSettings, PracticeSettings* practiceSettings, bool useTestNoteCutSoundEffects, EnvironmentInfoSO* environmentInfo, ColorScheme* colorScheme, MainSettingsModelSO* mainSettingsModel)
 {
     GameplayCoreSceneSetupData_ctor(self, difficultyBeatmap, previewBeatmapLevel, gameplayModifiers, playerSpecificSettings, practiceSettings, useTestNoteCutSoundEffects, environmentInfo, colorScheme, mainSettingsModel);
-    auto* playerLevelStatsData = QuestUI::ArrayUtil::First(Resources::FindObjectsOfTypeAll<PlayerDataModel*>())->get_playerData()->GetPlayerLevelStatsData(difficultyBeatmap);
-    if (mapData.mapID != playerLevelStatsData->levelID || mapData.diff != difficultyBeatmap->get_difficulty() || mapData.mapType != playerLevelStatsData->beatmapCharacteristic->serializedName) updateMapData(playerLevelStatsData, difficultyBeatmap);
+    auto * playerData = QuestUI::ArrayUtil::First(Resources::FindObjectsOfTypeAll<PlayerDataModel*>())->get_playerData();
+    auto* playerLevelStatsData = playerData->GetPlayerLevelStatsData(difficultyBeatmap);
+    if (mapData.mapID != playerLevelStatsData->levelID || mapData.diff != difficultyBeatmap->get_difficulty() || mapData.mapType != playerLevelStatsData->beatmapCharacteristic->serializedName) ScorePercentage::MapUtils::updateMapData(playerData, difficultyBeatmap);
     pauseCount = 0;
     noException = true;
     if (scoreDetailsUI != nullptr) scoreDetailsUI->modal->Hide(true, nullptr);
-    timeController = nullptr;
+    
+    // multiplayer tomfoolery
     hasBeenNitod = false;
-    players.clear();
+    playerInfos.clear();
+    auto* modifierModel = QuestUI::ArrayUtil::First(Resources::FindObjectsOfTypeAll<GameplayModifiersModelSO*>());
+    modifierMultiplier = modifierModel->GetTotalMultiplier(modifierModel->CreateModifierParamsList(gameplayModifiers), 10);
 }
 
 MAKE_HOOK_MATCH(PPTime, &MainMenuViewController::DidActivate, void, MainMenuViewController* self, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
     PPTime(self, firstActivation, addedToHierarchy, screenSystemEnabling);
-    if (firstActivation) PPCalculator::PP::Initialize();
+    if (firstActivation){
+        auto mods = Modloader::getMods();
+        FUCKINGBEATSAVIORSUCKMYCOCK = mods.find("BeatSaviorData") != mods.end();
+        PPCalculator::PP::Initialize();
+        leaderboardFirstActivation = true;
+    }
 }
 
 MAKE_HOOK_MATCH(MenuTransitionsHelper_RestartGame, &MenuTransitionsHelper::RestartGame, void, MenuTransitionsHelper* self, System::Action_1<Zenject::DiContainer*>* finishCallback)
@@ -424,127 +284,46 @@ MAKE_HOOK_MATCH(MenuTransitionsHelper_RestartGame, &MenuTransitionsHelper::Resta
     origRankText = nullptr;
     scoreDiffText = nullptr;
     rankDiffText = nullptr;
-    model = nullptr;
     MenuTransitionsHelper_RestartGame(self, finishCallback);
 }
 
-MAKE_HOOK_MATCH(ScoreRingManager_UpdateScoreText, &MultiplayerScoreRingManager::UpdateScore, void, MultiplayerScoreRingManager* self, IConnectedPlayer* playerToUpdate){
-    if (scorePercentageConfig.LevelEndRank){
-        MultiplayerScoreProvider::RankedPlayer* player;
-        auto* scoreRingItem = self->GetScoreRingItem(playerToUpdate->get_userId());
-        if (!hasBeenNitod && playerToUpdate->get_userId() == nitoID){
-            hasBeenNitod = true;
-            scoreRingItem->SetName("MUNCHKIN");
-        }
-        bool flag = self->dyn__scoreProvider()->TryGetScore(playerToUpdate->get_userId(), player);
-        if (!flag || player->get_isFailed()){
-            scoreRingItem->SetScore("X");
-            return;
-        }
-        auto x = players.find(playerToUpdate->get_userId());
-        float currentSongTime;
-        if (x != players.end()) currentSongTime = x->second->songTime;
-        else if (playerToUpdate->get_isMe()) currentSongTime = timeController->dyn__songTime();
-        else return;
-        float timeValue;
-        int multiplier = 0;
-        for (int i = indexScore.first; i<scoreValues.size(); i++){
-            if (indexScore.first == -1) break;
-            timeValue = scoreValues[i].second;
-            int index = i + 1;
-            if (timeValue < currentSongTime){
-                multiplier = index < 2 ? 1 : index < 6 ? 2 : index < 14 ? 4 : 8;
-                indexScore.second += scoreValues[i].first * multiplier;
-                if (i == scoreValues.size() -1) indexScore.first = -1;
-            }
-            else {
-                indexScore.first = i;
-                break;
-            }
-        }
-        int userScore = player->get_score();
-        std::string userPercentage = indexScore.second != 0 ? Round(calculatePercentage(indexScore.second, userScore), 2) : "0.00";
-        scoreRingItem->SetScore(std::to_string(userScore) + " (" + userPercentage + "%)");
-        
-    }
-    else ScoreRingManager_UpdateScoreText(self, playerToUpdate);
-}
-
-MAKE_HOOK_MATCH(ScoreDiffText, &MultiplayerConnectedPlayerScoreDiffText::AnimateScoreDiff, void, MultiplayerConnectedPlayerScoreDiffText* self, int scoreDiff){
-    ScoreDiffText(self, scoreDiff);
-    if (timeController != nullptr && scorePercentageConfig.LevelEndRank){
-        if(self->dyn__onPlatformText()->get_enableWordWrapping()){
-            self->dyn__onPlatformText()->set_richText(true);
-            self->dyn__onPlatformText()->set_enableWordWrapping(false);
-            auto* transform = (RectTransform*)(self->dyn__backgroundSpriteRenderer()->get_transform());
-            transform->set_localScale({transform->get_localScale().x *2.0f, transform->get_localScale().y, 0.0f});
-        }
-        std::string baseText = self->dyn__onPlatformText()->get_text();
-        int maxPossibleScore = indexScore.second;
-        std::string posneg = (scoreDiff >= 0) ? "+" : "";
-        std::string percentageText = " (" + posneg + Round(calculatePercentage(maxPossibleScore, scoreDiff), 2) + "%)";
-        self->dyn__onPlatformText()->SetText(baseText + percentageText);
-    }
-    else if (!scorePercentageConfig.LevelEndRank){
-        if(!self->dyn__onPlatformText()->get_enableWordWrapping()){
-            self->dyn__onPlatformText()->set_richText(false);
-            self->dyn__onPlatformText()->set_enableWordWrapping(true);
-            auto* transform = (RectTransform*)(self->dyn__backgroundSpriteRenderer()->get_transform());
-            transform->set_localScale({transform->get_localScale().x /2.0f, transform->get_localScale().y, 0.0f});
-        }
-    }
-}
-
-MAKE_HOOK_MATCH(ScoreStuff, &MultiplayerLocalActiveClient::Start, void, MultiplayerLocalActiveClient* self){
-    ScoreStuff(self);
-    timeController = self->dyn__audioTimeSyncController();
-    indexScore = std::make_pair(0, 0);
-}
-
-MAKE_HOOK_MATCH(FUCKME, &MultiplayerConnectedPlayerSongTimeSyncController::StartSong, void, MultiplayerConnectedPlayerSongTimeSyncController* self, float songStartSyncTime){
-    FUCKME(self, songStartSyncTime);
-    players.insert(std::make_pair(self->connectedPlayer->get_userId(), self));
-}
-
+//silly hooks for modal stuff
 MAKE_HOOK_MATCH(Modal_Hide, &HMUI::ModalView::Hide, void, HMUI::ModalView* self, bool animated, System::Action* finishedCallback){
-    std::string modalName = self->get_name();
-    std::string myName = "ScoreDetailsModal";
-
-    if (scoreDetailsUI != nullptr && modalName.compare(myName) == 0 && !noException && scorePercentageConfig.alwaysOpen){
-        return;
-    }
+    bool isMyModal = self->get_name() == "ScoreDetailsModal";
+    if (scoreDetailsUI != nullptr && isMyModal && !noException && scorePercentageConfig.alwaysOpen) return;
     else Modal_Hide(self, animated, finishedCallback);
+    noException = false;
 }
 
 MAKE_HOOK_MATCH(LeaderBoard_Activate, &PlatformLeaderboardViewController::DidActivate, void, PlatformLeaderboardViewController* self, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling){
     LeaderBoard_Activate(self, firstActivation, addedToHierarchy, screenSystemEnabling);
-    if (scoreDetailsUI != nullptr && scoreDetailsUI->hasValidScoreData && scorePercentageConfig.alwaysOpen && scorePercentageConfig.MenuHighScore) scoreDetailsUI->modal->Show(true, true, nullptr);
+    if (FUCKINGBEATSAVIORSUCKMYCOCK) SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(FuckYouBeatSaviorData(self->get_transform()->GetComponentInChildren<LevelStatsView*>())));
+    else if (scoreDetailsUI != nullptr && scoreDetailsUI->hasValidScoreData && scorePercentageConfig.alwaysOpen && scorePercentageConfig.MenuHighScore){
+        if (scoreDetailsUI->modal->isShown){
+            noException = true;
+            scoreDetailsUI->modal->Hide(false, nullptr);
+            scoreDetailsUI->modal->Show(false, true, nullptr);
+        }
+        else scoreDetailsUI->modal->Show(true, true, nullptr);
+    }
+}
+
+MAKE_HOOK_MATCH(LeaderBoard_DeActivate, &PlatformLeaderboardViewController::DidDeactivate, void, PlatformLeaderboardViewController* self, bool removedFromHierarchy, bool screenSystemDisabling){
+    LeaderBoard_DeActivate(self, removedFromHierarchy, screenSystemDisabling);
+    if (!FUCKINGBEATSAVIORSUCKMYCOCK) return;
+    if (scoreDetailsUI != nullptr && scoreDetailsUI->modal->dyn__isShown()){
+        noException = true;
+        scoreDetailsUI->modal->Hide(false, nullptr);
+    }
 }
 
 MAKE_HOOK_MATCH(LeaderBoard_Deactivate, &SoloFreePlayFlowCoordinator::BackButtonWasPressed, void, SinglePlayerLevelSelectionFlowCoordinator* self, HMUI::ViewController* topViewController){
     noException = topViewController != reinterpret_cast<HMUI::ViewController*>(self->dyn__practiceViewController());
     LeaderBoard_Deactivate(self, topViewController);
+    getLogger().info("surely not right?");
     if (scoreDetailsUI != nullptr && scoreDetailsUI->modal->dyn__isShown()){
         scoreDetailsUI->modal->Hide(false, nullptr);
     }
-}
-// quite a small hook
-MAKE_HOOK_MATCH(ScoreModel_MaxScore, &ScoreModel::ComputeMaxMultipliedScoreForBeatmap, int, IReadonlyBeatmapData* beatmapData){
-    return FixYourShitBeatGames(beatmapData);
-}
-
-MAKE_HOOK_MATCH(HealthSkip, &HealthWarningFlowCoordinator::DidActivate, void, HealthWarningFlowCoordinator* self, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling){
-    HealthSkip(self, firstActivation, addedToHierarchy, screenSystemEnabling);
-    bool eula = self->dyn__playerDataModel()->get_playerData()->get_playerAgreements()->AgreedToEula();
-    bool helth = self->dyn__playerDataModel()->get_playerData()->get_playerAgreements()->AgreedToPrivacyPolicy();
-    if (eula && helth){
-        successfullySkipped = true;
-        auto* nextScene = self->dyn__initData()->dyn_nextScenesTransitionSetupData();
-        self->dyn__gameScenesManager()->ReplaceScenes(nextScene, nullptr, 0.0f, nullptr, nullptr);
-    }
-}
-MAKE_HOOK_MATCH(FuckOff, &HealthWarningFlowCoordinator::HandleHealthWarningViewControllerDidFinish, void, HealthWarningFlowCoordinator* self){
-    if (!successfullySkipped) FuckOff(self);
 }
 
 // Called later on in the game loading - a good time to install function hooks
@@ -554,25 +333,17 @@ extern "C" void load() {
     QuestUI::Init();
     custom_types::Register::AutoRegister();
     QuestUI::Register::RegisterModSettingsFlowCoordinator<ScoreDetailsUI::SettingsFlowCoordinator*>(modInfo);
-    // QuestUI::Register::RegisterModSettingsViewController<ScoreDetailsUI::UIController*>(modInfo);
     getLogger().info("Installing hooks...");
     INSTALL_HOOK(getLogger(), Menu);
     INSTALL_HOOK(getLogger(), Results);
-    INSTALL_HOOK(getLogger(), MultiplayerResults);
     INSTALL_HOOK(getLogger(), Pause);
     INSTALL_HOOK(getLogger(), PPTime);
     INSTALL_HOOK(getLogger(), GameplayCoreSceneSetupData_ctor)
     INSTALL_HOOK(getLogger(), MenuTransitionsHelper_RestartGame);
-    INSTALL_HOOK(getLogger(), ScoreRingManager_UpdateScoreText);
-    INSTALL_HOOK(getLogger(), ScoreStuff);
-    INSTALL_HOOK(getLogger(), ScoreDiffText);
     INSTALL_HOOK(getLogger(), Modal_Hide);
     INSTALL_HOOK(getLogger(), LeaderBoard_Activate);
     INSTALL_HOOK(getLogger(), LeaderBoard_Deactivate);
-    INSTALL_HOOK(getLogger(), FUCKME);
-    INSTALL_HOOK_ORIG(getLogger(), ScoreModel_MaxScore);
-
-    INSTALL_HOOK(getLogger(), HealthSkip);
-    INSTALL_HOOK(getLogger(), FuckOff);
+    INSTALL_HOOK(getLogger(), LeaderBoard_DeActivate);
+    ScorePercentage::MultiplayerHooks::InstallHooks();
     getLogger().info("Installed all hooks!");
 }

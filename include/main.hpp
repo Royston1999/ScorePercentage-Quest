@@ -3,6 +3,10 @@
 // Include the modloader header, which allows us to tell the modloader which mod this is, and the version etc.
 #include "modloader/shared/modloader.hpp"
 #include "ScorePercentageConfig.hpp"
+#include "ScoreDetailsModal.hpp"
+#include "GlobalNamespace/BeatmapLevelsModel.hpp"
+#include "GlobalNamespace/MultiplayerConnectedPlayerSongTimeSyncController.hpp"
+#include "GlobalNamespace/GameplayModifiers.hpp"
 // beatsaber-hook is a modding framework that lets us call functions and fetch field values from in the game
 // It also allows creating objects, configuration, and importantly, hooking methods to modify their values
 #include "beatsaber-hook/shared/utils/logging.hpp"
@@ -29,5 +33,12 @@ struct BeatMapData{
 extern ModInfo modInfo;
 extern BeatMapData mapData;
 extern ScorePercentageConfig scorePercentageConfig;
+extern ScorePercentage::ModalPopup* scoreDetailsUI;
+extern std::map<StringW, std::pair<std::pair<int, int>, GlobalNamespace::MultiplayerConnectedPlayerSongTimeSyncController*>> playerInfos;
+extern std::vector<int> routines;
+extern float modifierMultiplier;
+extern int pauseCount;
 extern bool modalSettingsChanged;
 extern bool noException;
+extern bool hasBeenNitod;
+extern bool FUCKINGBEATSAVIORSUCKMYCOCK;

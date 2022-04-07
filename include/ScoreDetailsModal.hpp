@@ -14,7 +14,6 @@
 #include "GlobalNamespace/PlayerLevelStatsData.hpp"
 #include "GlobalNamespace/BeatmapData.hpp"
 #include "GlobalNamespace/BeatmapCharacteristicSO.hpp"
-#include "main.hpp"
 
 namespace ScorePercentage{
     class ModalPopup{
