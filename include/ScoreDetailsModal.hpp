@@ -31,8 +31,7 @@ namespace ScorePercentage{
             UnityEngine::UI::Button* closeButton;
             UnityEngine::UI::VerticalLayoutGroup* list;
             void updateInfo();
-            void loadingInfo();
-            void loadingFailed();
+            void setDisplayTexts(std::string text);
             std::function<void()> onScoreDetails;
             bool hasValidScoreData;
     };

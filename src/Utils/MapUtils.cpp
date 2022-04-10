@@ -23,7 +23,7 @@ namespace ScorePercentage::MapUtils{
     custom_types::Helpers::Coroutine DoNewPercentageStuff(PlayerSpecificSettings* playerSpecificSettings, IDifficultyBeatmap* difficultyBeatmap)
     {
         int crIndex = routines.size() + 1; routines.push_back(crIndex);
-        if (scoreDetailsUI != nullptr) scoreDetailsUI->loadingInfo();
+        if (scoreDetailsUI != nullptr) scoreDetailsUI->setDisplayTexts("loading...");
         auto* envInfo = BeatmapEnvironmentHelper::GetEnvironmentInfo(difficultyBeatmap);
         auto* result = difficultyBeatmap->GetBeatmapDataAsync(envInfo, playerSpecificSettings);
         while (!result->get_IsCompleted()) co_yield nullptr;
@@ -33,7 +33,7 @@ namespace ScorePercentage::MapUtils{
         int maxScore = data != nullptr ? ScoreModel::ComputeMaxMultipliedScoreForBeatmap(data) : 1;
         float currentPercentage = ScorePercentage::Utils::calculatePercentage(maxScore, mapData.currentScore);
         mapData.currentPercentage = currentPercentage; mapData.maxScore = maxScore;
-        if (scoreDetailsUI != nullptr) data != nullptr ? scoreDetailsUI->updateInfo() : scoreDetailsUI->loadingFailed();
+        if (scoreDetailsUI != nullptr) data != nullptr ? scoreDetailsUI->updateInfo() : scoreDetailsUI->setDisplayTexts("failed ;(");
         co_return;
     }
 

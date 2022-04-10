@@ -104,21 +104,12 @@ void ScorePercentage::ModalPopup::updateInfo(){
     if (scorePercentageConfig.uiPauseCount) pauseCountGUI->SetText(pauseCountText);
     if (scorePercentageConfig.uiDatePlayed) datePlayed->SetText(datePlayedText);
 }
-void ScorePercentage::ModalPopup::loadingInfo(){
-    score->SetText("loading...");
-    maxCombo->SetText("loading...");
-    if (scorePercentageConfig.uiPlayCount) playCount->SetText("loading...");
-    if (scorePercentageConfig.uiMissCount) missCount->SetText("loading...");
-    if (scorePercentageConfig.uiBadCutCount) badCutCount->SetText("loading...");
-    if (scorePercentageConfig.uiPauseCount) pauseCountGUI->SetText("loading...");
-    if (scorePercentageConfig.uiDatePlayed) datePlayed->SetText("loading...");
-}
-void ScorePercentage::ModalPopup::loadingFailed(){
-    score->SetText("failed ;(");
-    maxCombo->SetText("failed ;(");
-    if (scorePercentageConfig.uiPlayCount) playCount->SetText("failed ;(");
-    if (scorePercentageConfig.uiMissCount) missCount->SetText("failed ;(");
-    if (scorePercentageConfig.uiBadCutCount) badCutCount->SetText("failed ;(");
-    if (scorePercentageConfig.uiPauseCount) pauseCountGUI->SetText("failed ;(");
-    if (scorePercentageConfig.uiDatePlayed) datePlayed->SetText("failed ;(");
+void ScorePercentage::ModalPopup::setDisplayTexts(std::string text){
+    score->SetText(text);
+    maxCombo->SetText(text);
+    if (scorePercentageConfig.uiPlayCount) playCount->SetText(text);
+    if (scorePercentageConfig.uiMissCount) missCount->SetText(text);
+    if (scorePercentageConfig.uiBadCutCount) badCutCount->SetText(text);
+    if (scorePercentageConfig.uiPauseCount) pauseCountGUI->SetText(text);
+    if (scorePercentageConfig.uiDatePlayed) datePlayed->SetText(text);
 }

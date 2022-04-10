@@ -92,12 +92,12 @@ MAKE_HOOK_MATCH(Results_SetData, &ResultsTableCell::SetData, void, ResultsTableC
     if (scorePercentageConfig.multiLevelEndRank){
         if (!self->dyn__rankText()->get_richText()) toggleMultiResultsTableFormat(true, self);
         bool isNoFail = levelCompletionResults->dyn_gameplayModifiers()->get_noFailOn0Energy() && levelCompletionResults->dyn_energy() == 0;
+        int totalMisses = levelCompletionResults->dyn_missedCount() + levelCompletionResults->dyn_badCutsCount();
         std::string percentageText = Round(calculatePercentage(mapData.maxScore, levelCompletionResults->dyn_modifiedScore()), 2);
-        self->dyn__rankText()->SetText(percentageText + "<size=75%>%</size>");
         std::string score = self->dyn__scoreText()->get_text();
         std::string preText = !passedLevel ? "F" + tab : isNoFail ? "NF" + tab : "";
-        int totalMisses = levelCompletionResults->dyn_missedCount() + levelCompletionResults->dyn_badCutsCount();
         std::string missText = levelCompletionResults->dyn_fullCombo() ? "FC" : preText + "<color=red>X</color><size=65%> </size>" + std::to_string(totalMisses);
+        self->dyn__rankText()->SetText(percentageText + "<size=75%>%</size>");
         self->dyn__scoreText()->SetText(missText + tab + score);
     }
     else{
@@ -124,12 +124,10 @@ MAKE_HOOK_MATCH(ScoreRingManager_UpdateScoreText, &MultiplayerScoreRingManager::
         }
         bool flag = self->dyn__scoreProvider()->TryGetScore(playerToUpdate->get_userId(), player);
         if (!flag || player->get_isFailed()){
-            scoreRingItem->SetScore("X");
-            return;
+            scoreRingItem->SetScore("X"); return;
         }
         if (scoreValues.empty()){
-            scoreRingItem->SetScore("0 (0.00%)");
-            return;
+            scoreRingItem->SetScore("0 (0.00%)"); return;
         }
         auto x = playerInfos.find(playerToUpdate->get_userId());
         float currentSongTime;
