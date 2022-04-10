@@ -7,7 +7,7 @@
 #include "questui/shared/QuestUI.hpp"
 #include "HMUI/ModalView.hpp"
 #include "UnityEngine/RectOffset.hpp"
-#include "ScoreUtils.hpp"
+#include "Utils/ScoreUtils.hpp"
 #include "PPCalculator.hpp"
 #include "GlobalNamespace/ScoreFormatter.hpp"
 #include "GlobalNamespace/IDifficultyBeatmap.hpp"

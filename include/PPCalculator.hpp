@@ -28,7 +28,6 @@ namespace PPCalculator {
         void Initialize();
         void HandleWebRequestCompleted();
 
-        bool SongAllowsPositiveModifiers(std::string songID);
         float CalculatePP(float maxPP, float accuracy);
         float BeatmapMaxPP(std::string songID, GlobalNamespace::BeatmapDifficulty difficulty);
     }

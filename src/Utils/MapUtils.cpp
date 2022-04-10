@@ -1,5 +1,5 @@
-#include "MapUtils.hpp"
-#include "ScoreUtils.hpp"
+#include "Utils/MapUtils.hpp"
+#include "Utils/ScoreUtils.hpp"
 
 #include "GlobalNamespace/NoteData.hpp"
 #include "GlobalNamespace/SliderData.hpp"

@@ -36,15 +36,12 @@ float ppCurve[PP_CURVE_SIZE][2] = {
     {1.0f, 7.0f}
 };
 float ppCurveSlopes[31];
-static std::unordered_set<std::string> songsAllowingPositiveModifiers = {
-    "2FDDB136BDA7F9E29B4CB6621D6D8E0F8A43B126", // Overkill Nuketime
-    "27FCBAB3FB731B16EABA14A5D039EEFFD7BD44C9" // Overkill Kry
-};
-const std::string PP_DATA_URI = "https://raw.githubusercontent.com/Royston1999/ScorePercentage-Quest/main/raw_pp.json";
+
+const std::string PP_DATA_URI = "https://cdn.pulselane.dev/raw_pp.json";
 
 void PPCalculator::PP::Initialize() {
-    request = UnityEngine::Networking::UnityWebRequest::Get(il2cpp_utils::newcsstr(PP_DATA_URI));
-    request->SetRequestHeader(il2cpp_utils::newcsstr("User-Agent"), il2cpp_utils::newcsstr(std::string(ID) + " " + VERSION));
+    request = UnityEngine::Networking::UnityWebRequest::Get(PP_DATA_URI);
+    request->SetRequestHeader("User-Agent", std::string(ID) + " " + VERSION);
     request->SendWebRequest()->add_completed(il2cpp_utils::MakeDelegate<DownloadCompleteDelegate>(
         classof(DownloadCompleteDelegate), (void*)nullptr, PPCalculator::PP::HandleWebRequestCompleted
     ));
@@ -98,10 +95,6 @@ std::string SongIDToHash(std::string songID) {
 
 float PPCalculator::PP::CalculatePP(float maxPP, float accuracy) {
     return maxPP * RatioOfMaxPP(accuracy);
-}
-
-bool PPCalculator::PP::SongAllowsPositiveModifiers(std::string songID) {
-    return songsAllowingPositiveModifiers.contains(SongIDToHash(songID));
 }
 
 float PPCalculator::PP::BeatmapMaxPP(std::string songID, GlobalNamespace::BeatmapDifficulty difficulty) {

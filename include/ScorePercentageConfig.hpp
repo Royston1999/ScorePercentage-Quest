@@ -21,18 +21,26 @@ class ScorePercentageConfig {
 public:
     ConfigDocument beatMapData;
 
-    bool alwaysOpen;
+    // solo
     bool MenuHighScore;
     bool LevelEndRank;
     bool missDifference;
     bool ScoreDifference;
     bool ScorePercentageDifference;
+
+    // popup
     bool uiPP;
     bool uiPlayCount;
     bool uiMissCount;
     bool uiBadCutCount;
     bool uiPauseCount;
     bool uiDatePlayed;
+    bool alwaysOpen;
+
+    // multi
+    bool multiLevelEndRank;
+    bool multiLivePercentages;
+    bool multiPercentageDifference;
 
     int missCount;
     int badCutCount;

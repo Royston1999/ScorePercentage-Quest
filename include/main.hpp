@@ -4,9 +4,7 @@
 #include "modloader/shared/modloader.hpp"
 #include "ScorePercentageConfig.hpp"
 #include "ScoreDetailsModal.hpp"
-#include "GlobalNamespace/BeatmapLevelsModel.hpp"
 #include "GlobalNamespace/MultiplayerConnectedPlayerSongTimeSyncController.hpp"
-#include "GlobalNamespace/GameplayModifiers.hpp"
 // beatsaber-hook is a modding framework that lets us call functions and fetch field values from in the game
 // It also allows creating objects, configuration, and importantly, hooking methods to modify their values
 #include "beatsaber-hook/shared/utils/logging.hpp"

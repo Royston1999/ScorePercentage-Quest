@@ -1,5 +1,7 @@
 #include "MultiplayerHooks.hpp"
 
+#include "bs-utils/shared/utils.hpp"
+
 #include "GlobalNamespace/AudioTimeSyncController.hpp"
 #include "GlobalNamespace/GameplayModifiers.hpp"
 #include "GlobalNamespace/IConnectedPlayer.hpp"
@@ -27,8 +29,8 @@
 
 #include "UnityEngine/SpriteRenderer.hpp"
 
-#include "ScoreUtils.hpp"
-#include "MapUtils.hpp"
+#include "Utils/ScoreUtils.hpp"
+#include "Utils/MapUtils.hpp"
 #include "main.hpp"
 
 using namespace GlobalNamespace;
@@ -62,7 +64,6 @@ void CreateScoreTimeValues(IReadonlyBeatmapData* data){
                 }
             }
         }
-        getLogger().info("suck my balls");
         if (scoreValues.empty()) return;
         std::sort(scoreValues.begin(), scoreValues.end(), [](auto &left, auto &right) { return left.second < right.second; });
         int count = 0, multiplier = 0, maxScore = 0;
@@ -88,7 +89,7 @@ void toggleMultiResultsTableFormat(bool value, ResultsTableCell* cell){
 MAKE_HOOK_MATCH(Results_SetData, &ResultsTableCell::SetData, void, ResultsTableCell* self, int order, IConnectedPlayer* connectedPlayer, LevelCompletionResults* levelCompletionResults){
     Results_SetData(self, order, connectedPlayer, levelCompletionResults);
     bool passedLevel = levelCompletionResults->dyn_levelEndStateType() == 1 ? true : false;
-    if (scorePercentageConfig.LevelEndRank){
+    if (scorePercentageConfig.multiLevelEndRank){
         if (!self->dyn__rankText()->get_richText()) toggleMultiResultsTableFormat(true, self);
         bool isNoFail = levelCompletionResults->dyn_gameplayModifiers()->get_noFailOn0Energy() && levelCompletionResults->dyn_energy() == 0;
         std::string percentageText = Round(calculatePercentage(mapData.maxScore, levelCompletionResults->dyn_modifiedScore()), 2);
@@ -104,7 +105,8 @@ MAKE_HOOK_MATCH(Results_SetData, &ResultsTableCell::SetData, void, ResultsTableC
         if (!passedLevel) self->dyn__rankText()->SetText("F");
         else self->dyn__rankText()->SetText(RankModel::GetRankName(levelCompletionResults->dyn_rank()));
     }
-    if (connectedPlayer->get_isMe() && (levelCompletionResults->dyn_modifiedScore() - mapData.currentScore > 0) && passedLevel){
+    // write new highscore to file
+    if (connectedPlayer->get_isMe() && (levelCompletionResults->dyn_modifiedScore() - mapData.currentScore > 0) && passedLevel && bs_utils::Submission::getEnabled()){
         int misses = levelCompletionResults->dyn_missedCount();
         int badCut = levelCompletionResults->dyn_badCutsCount();
         std::string currentTime = System::DateTime::get_UtcNow().ToLocalTime().ToString("D");
@@ -113,7 +115,7 @@ MAKE_HOOK_MATCH(Results_SetData, &ResultsTableCell::SetData, void, ResultsTableC
 }
 
 MAKE_HOOK_MATCH(ScoreRingManager_UpdateScoreText, &MultiplayerScoreRingManager::UpdateScore, void, MultiplayerScoreRingManager* self, IConnectedPlayer* playerToUpdate){
-    if (scorePercentageConfig.LevelEndRank){
+    if (scorePercentageConfig.multiLivePercentages){
         MultiplayerScoreProvider::RankedPlayer* player;
         auto* scoreRingItem = self->GetScoreRingItem(playerToUpdate->get_userId());
         if (!hasBeenNitod && playerToUpdate->get_userId() == nitoID){
@@ -158,7 +160,7 @@ MAKE_HOOK_MATCH(ScoreRingManager_UpdateScoreText, &MultiplayerScoreRingManager::
 
 MAKE_HOOK_MATCH(ScoreDiff_UpdateText, &MultiplayerConnectedPlayerScoreDiffText::AnimateScoreDiff, void, MultiplayerConnectedPlayerScoreDiffText* self, int scoreDiff){
     ScoreDiff_UpdateText(self, scoreDiff);
-    if (myTimeController != nullptr && scorePercentageConfig.LevelEndRank){
+    if (myTimeController != nullptr && scorePercentageConfig.multiPercentageDifference){
         if(self->dyn__onPlatformText()->get_enableWordWrapping()){
             self->dyn__onPlatformText()->set_richText(true);
             self->dyn__onPlatformText()->set_enableWordWrapping(false);
@@ -171,7 +173,7 @@ MAKE_HOOK_MATCH(ScoreDiff_UpdateText, &MultiplayerConnectedPlayerScoreDiffText::
         std::string percentageText = " (" + posneg + Round(calculatePercentage(maxPossibleScore, scoreDiff), 2) + "%)";
         self->dyn__onPlatformText()->SetText(baseText + percentageText);
     }
-    else if (!scorePercentageConfig.LevelEndRank){
+    else if (!scorePercentageConfig.multiPercentageDifference){
         if(!self->dyn__onPlatformText()->get_enableWordWrapping()){
             self->dyn__onPlatformText()->set_richText(false);
             self->dyn__onPlatformText()->set_enableWordWrapping(true);

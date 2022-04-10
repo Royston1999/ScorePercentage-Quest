@@ -1,7 +1,8 @@
-#include "ScoreDetailsUIViewController.hpp"
-#include "SettingsFlowCoordinator.hpp"
+#include "UI/ScoreDetailsUIViewController.hpp"
+#include "UI/SettingsFlowCoordinator.hpp"
 #include "ScorePercentageConfig.hpp"
 #include "UnityEngine/RectOffset.hpp"
+#include "Utils/UIUtils.hpp"
 
 DEFINE_TYPE(ScoreDetailsUI::Views, ScoreDetailsUIViewController);
 UnityEngine::UI::Toggle* ppToggle = nullptr;
@@ -37,6 +38,7 @@ void ScoreDetailsUI::Views::ScoreDetailsUIViewController::DidActivate(bool first
 
     if (firstActivation) {
         scoreDetailsContainer = QuestUI::BeatSaberUI::CreateVerticalLayoutGroup(get_transform());
+        UIUtils::AddHeader(get_transform(), "Score Details UI Settings", UnityEngine::Color(0.941f, 0.188f, 0.188f, 1.0f));
         AddHoverHint(CreateToggle(scoreDetailsContainer->get_transform(), "Toggle Advanced Score Details", scorePercentageConfig.MenuHighScore, 
         [](bool value) {    
             setBool(getConfig().config, "Menu Highscore Percentage", value, false);

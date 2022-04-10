@@ -62,7 +62,6 @@ void ScorePercentage::initModalPopup(ScorePercentage::ModalPopup** modalUIPointe
     modalUI->closeButton = CreateUIButton(modalUI->modal->get_transform(), "X", "PracticeButton", UnityEngine::Vector2(25, y + 2.3f), {8.0f, 8.0f}, [modalUI](){
         noException = true;
         modalUI->modal->Hide(true, nullptr);
-        noException = false;
     });
     Object::Destroy(modalUI->closeButton->GetComponentInChildren<LayoutElement*>());
     Object::Destroy(modalUI->closeButton->get_transform()->Find("Underline")->get_gameObject());
@@ -97,8 +96,8 @@ void ScorePercentage::ModalPopup::updateInfo(){
     std::string pauseCountText = createTextFromBeatmapData(scorePercentageConfig.pauseCount, "Pause Count - ");
     std::string datePlayedText = createDatePlayedText(scorePercentageConfig.datePlayed);
     
-    score->SetText(il2cpp_utils::newcsstr(scoreText));
-    maxCombo->SetText(il2cpp_utils::newcsstr(maxComboText));
+    score->SetText(scoreText);
+    maxCombo->SetText(maxComboText);
     if (scorePercentageConfig.uiPlayCount) playCount->SetText(playCountText);
     if (scorePercentageConfig.uiMissCount) missCount->SetText(missCountText);
     if (scorePercentageConfig.uiBadCutCount) badCutCount->SetText(badCutCountText);

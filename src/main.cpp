@@ -2,16 +2,18 @@
 #include <cmath>
 
 #include "ScoreDetailsModal.hpp"
-#include "ScoreUtils.hpp"
-#include "SettingsFlowCoordinator.hpp"
+#include "Utils/ScoreUtils.hpp"
+#include "UI/SettingsFlowCoordinator.hpp"
 #include "PPCalculator.hpp"
-#include "MapUtils.hpp"
+#include "Utils/MapUtils.hpp"
 #include "MultiplayerHooks.hpp"
 #include "main.hpp"
 
 #include "questui/shared/QuestUI.hpp"
 
 #include "beatsaber-hook/shared/utils/hooking.hpp"
+
+#include "bs-utils/shared/utils.hpp"
 
 #include "System/DateTime.hpp"
 
@@ -103,7 +105,6 @@ custom_types::Helpers::Coroutine FuckYouBeatSaviorData(LevelStatsView* self)
             auto* beatMySavior = QuestUI::ArrayUtil::First(self->get_transform()->get_parent()->GetComponentsInChildren<Button*>(), [](Button* x) { return x->get_name() == "BeatSaviorDataDetailsButton"; });
             if (beatMySavior && beatMySavior->get_gameObject()->get_active()){
                 beatBeyondSaving = true;
-                getLogger().info("what??");
                 scoreDetailsUI->openButton->GetComponent<RectTransform*>()->set_anchoredPosition({-47.0f, 10.0f});
             }
         }
@@ -241,7 +242,7 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
         else self->dyn__goodCutsPercentageText()->SetText(missText);
 
         // write new highscore to file
-        if ((resultScore - mapData.currentScore) > 0 && !self->get_practice() && !isParty)
+        if ((resultScore - mapData.currentScore) > 0 && !self->get_practice() && !isParty && bs_utils::Submission::getEnabled())
         {
             int misses = self->dyn__levelCompletionResults()->dyn_missedCount();
             int badCut = self->dyn__levelCompletionResults()->dyn_badCutsCount();
@@ -271,8 +272,7 @@ MAKE_HOOK_FIND_CLASS_UNSAFE_INSTANCE(GameplayCoreSceneSetupData_ctor, "", "Gamep
 MAKE_HOOK_MATCH(PPTime, &MainMenuViewController::DidActivate, void, MainMenuViewController* self, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
     PPTime(self, firstActivation, addedToHierarchy, screenSystemEnabling);
     if (firstActivation){
-        auto mods = Modloader::getMods();
-        FUCKINGBEATSAVIORSUCKMYCOCK = mods.find("BeatSaviorData") != mods.end();
+        FUCKINGBEATSAVIORSUCKMYCOCK = Modloader::requireMod("BeatSaviorData");
         PPCalculator::PP::Initialize();
         leaderboardFirstActivation = true;
     }
@@ -320,10 +320,7 @@ MAKE_HOOK_MATCH(LeaderBoard_DeActivate, &PlatformLeaderboardViewController::DidD
 MAKE_HOOK_MATCH(LeaderBoard_Deactivate, &SoloFreePlayFlowCoordinator::BackButtonWasPressed, void, SinglePlayerLevelSelectionFlowCoordinator* self, HMUI::ViewController* topViewController){
     noException = topViewController != reinterpret_cast<HMUI::ViewController*>(self->dyn__practiceViewController());
     LeaderBoard_Deactivate(self, topViewController);
-    getLogger().info("surely not right?");
-    if (scoreDetailsUI != nullptr && scoreDetailsUI->modal->dyn__isShown()){
-        scoreDetailsUI->modal->Hide(false, nullptr);
-    }
+    if (scoreDetailsUI != nullptr && scoreDetailsUI->modal->dyn__isShown()) scoreDetailsUI->modal->Hide(false, nullptr);
 }
 
 // Called later on in the game loading - a good time to install function hooks

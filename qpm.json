@@ -1,43 +1,48 @@
 {
-	"sharedDir": "shared",
-	"dependenciesDir": "extern",
-	"info": {
-	  "name": "Score Percentage",
-	  "id": "scorepercentage",
-	  "version": "3.1.0",
-	  "url": null,
-	  "additionalData": {}
-	},
-	"dependencies": [
-	  {
-		"id": "codegen",
-		"versionRange": "^0.22.0",
-		"additionalData": {}
-	  },
-	  {
-		"id": "custom-types",
-		"versionRange": "^0.15.8",
-		"additionalData": {}
-	  },
-	  {
-		"id": "beatsaber-hook",
-		"versionRange": "=3.7.4",
-		"additionalData": {
-		  "extraFiles": [
-			"src/inline-hook"
-		  ]
-		}
-	  },
-	  {
-		"id": "questui",
-		"versionRange": "^0.13.4",
-		"additionalData": {}
-	  },
-	  {
-		"id": "modloader",
-		"versionRange": "^1.2.3",
-		"additionalData": {}
-	  }
-	],
-	"additionalData": {}
-  }
+  "sharedDir": "shared",
+  "dependenciesDir": "extern",
+  "info": {
+    "name": "Score Percentage",
+    "id": "scorepercentage",
+    "version": "3.1.0",
+    "url": null,
+    "additionalData": {}
+  },
+  "dependencies": [
+    {
+      "id": "codegen",
+      "versionRange": "^0.22.0",
+      "additionalData": {}
+    },
+    {
+      "id": "custom-types",
+      "versionRange": "^0.15.8",
+      "additionalData": {}
+    },
+    {
+      "id": "beatsaber-hook",
+      "versionRange": "=3.7.4",
+      "additionalData": {
+        "extraFiles": [
+          "src/inline-hook"
+        ]
+      }
+    },
+    {
+      "id": "questui",
+      "versionRange": "^0.13.4",
+      "additionalData": {}
+    },
+    {
+      "id": "modloader",
+      "versionRange": "^1.2.3",
+      "additionalData": {}
+    },
+    {
+      "id": "bs-utils",
+      "versionRange": "^0.7.0",
+      "additionalData": {}
+    }
+  ],
+  "additionalData": {}
+}

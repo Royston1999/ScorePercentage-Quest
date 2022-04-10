@@ -1,6 +1,5 @@
-#include "SettingsViewController.hpp"
-#include "SettingsFlowCoordinator.hpp"
-#include "ScoreDetailsUIViewController.hpp"
+#include "UI/SettingsViewController.hpp"
+#include "UI/SettingsFlowCoordinator.hpp"
 
 #include "GlobalNamespace/OVRPlugin.hpp"
 #include "GlobalNamespace/OVRPlugin_SystemHeadset.hpp"
@@ -25,7 +24,7 @@ void ScoreDetailsUI::Views::SettingsViewController::DidActivate(
         AddHoverHint(CreateToggle(container->get_transform(), "Display Rank as Percentage", scorePercentageConfig.LevelEndRank, 
         [](bool value) {
             setBool(getConfig().config, "Level End Rank Display", value, false);
-        } )->get_gameObject(), "displays your rank as a percentage on the results screen. (also spices up the multiplayer results screen a little)");
+        } )->get_gameObject(), "displays your rank as a percentage on the results screen");
         
         AddHoverHint(CreateToggle(container->get_transform(), "Display Percentage Difference", scorePercentageConfig.ScorePercentageDifference, 
         [](bool value) {
@@ -41,24 +40,5 @@ void ScoreDetailsUI::Views::SettingsViewController::DidActivate(
         [](bool value) {
             setBool(getConfig().config, "Average Cut Score", value, false);
         } )->get_gameObject(), "displays the miss difference copared to your previous high score");
-
-        graphicsButton = CreateUIViewControllerButton(container->get_transform(), "Advanced Score Details Settings", QuestUI::BeatSaberUI::CreateViewController<ScoreDetailsUI::Views::ScoreDetailsUIViewController*>());
     }
-}
-
-UnityEngine::UI::Button* ScoreDetailsUI::Views::SettingsViewController::CreateUIViewControllerButton(
-    UnityEngine::Transform* parent,
-    std::string title,
-    HMUI::ViewController* viewController
-) {
-    using namespace UnityEngine;
-
-    return QuestUI::BeatSaberUI::CreateUIButton(parent, title, Vector2(), Vector2(5.0f, 1.15f),
-        [this, title, viewController]() {
-            flowCoordinator->SetTitle(il2cpp_utils::newcsstr(title), ViewController::AnimationType::In);
-            flowCoordinator->ReplaceTopViewController(viewController, flowCoordinator, flowCoordinator, nullptr, ViewController::AnimationType::In, ViewController::AnimationDirection::Horizontal);
-
-            reinterpret_cast<ScoreDetailsUI::SettingsFlowCoordinator*>(flowCoordinator)->currentViewController = viewController;
-        }
-    );
 }
