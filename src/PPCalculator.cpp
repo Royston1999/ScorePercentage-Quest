@@ -1,67 +1,53 @@
 #include "PPCalculator.hpp"
+#include "main.hpp"
 
-const int PP_CURVE_SIZE = 32;
-float ppCurve[PP_CURVE_SIZE][2] = {
-    {0, 0},
-    {.6f, .25f},
-    {.65f, .29f},
-    {.7f, .34f},
-    {.75f, .40f},
-    {.8f, .47f},
-    {.825f, .51f},
-    {.85f, .57f},
-    {.875f, .655f},
-    {.9f, .75f},
-    {.91f, .79f},
-    {.92f, .835f},
-    {.93f, 0.885f},
-    {.94f, 0.94f},
-    {.95f, 1.0f},
-    {.955f, 1.045f},
-    {.96f, 1.11f},
-    {.965f, 1.20f},
-    {.97f, 1.31f},
-    {.9725f, 1.37f},
-    {.975f, 1.45f},
-    {.9775f, 1.57f},
-    {.98f, 1.71f},
-    {.9825f, 1.88f},
-    {.985f, 2.1f},
-    {.9875f, 2.38f},
-    {.99f, 2.73f},
-    {.9925f, 3.17f},
-    {.995f, 3.76f},
-    {.9975f, 4.7f},
-    {.999f, 5.8f},
-    {1.0f, 7.0f}
-};
-float ppCurveSlopes[31];
+int PP_CURVE_SIZE = 0;
+std::vector<std::pair<float, float>> ppCurve;
+std::vector<float> ppCurveSlopes;
 
-const std::string PP_DATA_URI = "https://cdn.pulselane.dev/raw_pp.json";
+const std::string CURVE_DATA_URL = "https://raw.githubusercontent.com/Royston1999/ScorePercentage-Quest/main/curve.json";
 
-void PPCalculator::PP::Initialize() {
-    request = UnityEngine::Networking::UnityWebRequest::Get(PP_DATA_URI);
+#define DLCompletedDeleg(Type, Func) il2cpp_utils::MakeDelegate<Type>(classof(Type), static_cast<std::function<void()>>(Func)) \
+
+void PPCalculator::PP::SendWebRequest(std::string URL, function_ptr_t<void, std::string> callback){
+    auto request = UnityEngine::Networking::UnityWebRequest::Get(URL);
     request->SetRequestHeader("User-Agent", std::string(ID) + " " + VERSION);
-    request->SendWebRequest()->add_completed(il2cpp_utils::MakeDelegate<DownloadCompleteDelegate>(
-        classof(DownloadCompleteDelegate), (void*)nullptr, PPCalculator::PP::HandleWebRequestCompleted
-    ));
-
-    // precalculate curve slopes
-    for (auto i = 0; i < PP_CURVE_SIZE - 1; i++) {
-        auto x1 = ppCurve[i][0];
-        auto y1 = ppCurve[i][1];
-        auto x2 = ppCurve[i+1][0];
-        auto y2 = ppCurve[i+1][1];
-
-        auto m = (y2 - y1) / (x2 - x1);
-        ppCurveSlopes[i] = m;
-    }
+    request->SendWebRequest()->add_completed(DLCompletedDeleg(DownloadCompletedDelegate, [=](){
+        callback(request->get_downloadHandler()->GetText());
+    }));
 }
 
-void PPCalculator::PP::HandleWebRequestCompleted() {
-    auto response = to_utf8(csstrtostr(request->get_downloadHandler()->GetText()));
+void PPCalculator::PP::Initialize() {
+    SendWebRequest(CURVE_DATA_URL, PPCalculator::PP::HandleCurveWebRequestCompleted);
+}
+
+void PPCalculator::PP::HandleCurveWebRequestCompleted(std::string text) {
     rapidjson::Document document;
-    document.Parse(response.c_str());
+    document.Parse(text.c_str());
+    if (document.Empty()) return;
+    auto curveArray = document.FindMember("curve")->value.GetArray();
+    PP_CURVE_SIZE = curveArray.Size();
+    for (int i=PP_CURVE_SIZE-1; i>=0; i--){
+        auto coords = curveArray[i].GetArray();
+        ppCurve.push_back(std::make_pair(coords[0].GetFloat(), coords[1].GetFloat()));
+    }
+
+    for (auto i = 0; i < PP_CURVE_SIZE - 1; i++) {
+        auto x1 = ppCurve[i].first;
+        auto y1 = ppCurve[i].second;
+        auto x2 = ppCurve[i+1].first;
+        auto y2 = ppCurve[i+1].second;
+
+        auto m = (y2 - y1) / (x2 - x1);
+        ppCurveSlopes.push_back(m);
+    }
+    std::string URL = document.FindMember("ppData")->value.GetString();
+    SendWebRequest(URL, PPCalculator::PP::HandlePPWebRequestCompleted);
+}
+
+void PPCalculator::PP::HandlePPWebRequestCompleted(std::string text) {
+    rapidjson::Document document;
+    document.Parse(text.c_str());
 
     for (auto itr = document.MemberBegin(); itr != document.MemberEnd(); ++itr) {
         RawPPData data;
@@ -75,16 +61,19 @@ void PPCalculator::PP::HandleWebRequestCompleted() {
 }
 
 float RatioOfMaxPP(float accuracy) {
-    if (accuracy >= 1.0) return 7.0f;
-    if (accuracy <= 0.0f) return 0.0f;
-
+    if (accuracy >= ppCurve.back().second) return ppCurve.back().second;
+    if (accuracy <= ppCurve[0].second) return ppCurve[0].second;
+    if (PP_CURVE_SIZE == 0) return -1.0f;
     int i = 0;
     for (; i < PP_CURVE_SIZE; i++)
-        if (i == PP_CURVE_SIZE - 1 || ppCurve[i + 1][0] > accuracy) break;
+        if (i == PP_CURVE_SIZE - 1 || ppCurve[i + 1].first > accuracy) break;
 
-    auto accuracyFloor = ppCurve[i][0];
-    auto ppFloor = ppCurve[i][1];
-    return ppCurveSlopes[i] * (accuracy - accuracyFloor) + ppFloor;
+    auto accuracyFloor = ppCurve[i].first;
+    auto ppFloor = ppCurve[i].second;
+    getLogger().info("name: %2f", accuracyFloor);
+    float ratio = ppCurveSlopes[i] * (accuracy - accuracyFloor) + ppFloor;
+    getLogger().info("name: %2f", ratio);
+    return ratio;
 }
 
 std::string SongIDToHash(std::string songID) {
@@ -98,6 +87,7 @@ float PPCalculator::PP::CalculatePP(float maxPP, float accuracy) {
 }
 
 float PPCalculator::PP::BeatmapMaxPP(std::string songID, GlobalNamespace::BeatmapDifficulty difficulty) {
+    getLogger().info("name: %s", static_cast<std::string>(songID).c_str());
     auto itr = index.find(SongIDToHash(songID));
     if (itr == index.end()) return -1;
 

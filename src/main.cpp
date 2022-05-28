@@ -47,6 +47,8 @@
 #include "GlobalNamespace/GameplayModifiersModelSO.hpp"
 #include "GlobalNamespace/GameplayModifierParamsSO.hpp"
 #include "UnityEngine/WaitForSeconds.hpp"
+#include "GlobalNamespace/LevelCompletionResultsHelper.hpp"
+#include "GlobalNamespace/IPreviewBeatmapLevel.hpp"
 
 using namespace QuestUI::BeatSaberUI;
 using namespace UnityEngine::UI;
@@ -68,6 +70,7 @@ bool noException = false;
 bool successfullySkipped = false;
 bool leaderboardFirstActivation = false;
 bool FUCKINGBEATSAVIORSUCKMYCOCK;
+bool validResults;
 
 // Loads the config from disk using our modInfo, then returns it for use
 Configuration& getConfig() {
@@ -144,7 +147,9 @@ void createDifferenceTexts(ResultsViewController* self){
 
 MAKE_HOOK_MATCH(Menu, &LevelStatsView::ShowStats, void, LevelStatsView* self, IDifficultyBeatmap* difficultyBeatmap, PlayerData* playerData) {
     Menu(self, difficultyBeatmap, playerData);
-    // throw il2cpp_utils::RunMethodException("sc2ad still crashing my game :(", nullptr);
+    auto* test = reinterpret_cast<IPreviewBeatmapLevel*>(difficultyBeatmap->get_level());
+    getLogger().info("ID: %s", static_cast<std::string>(test->get_levelID()).c_str());
+    validResults = false;
     if (noException) noException = false;
     if (playerData != nullptr)
     {
@@ -165,11 +170,18 @@ MAKE_HOOK_MATCH(Pause, &GamePause::Pause, void, GamePause* self) {
     pauseCount++;
 }
 
+MAKE_HOOK_MATCH(TakeMeToResults_Fix, &LevelCompletionResultsHelper::ProcessScore, void, PlayerData* playerData, PlayerLevelStatsData* playerLevelStats, LevelCompletionResults* levelCompletionResults, IReadonlyBeatmapData* transformedBeatmapData, IDifficultyBeatmap* difficultyBeatmap, PlatformLeaderboardsModel* platformLeaderboardsModel){
+    TakeMeToResults_Fix(playerData, playerLevelStats, levelCompletionResults, transformedBeatmapData, difficultyBeatmap, platformLeaderboardsModel);
+    if (levelCompletionResults->levelEndStateType == LevelCompletionResults::LevelEndStateType::Cleared) validResults = true;
+}
+
 MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewController* self, bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
     Results(self, firstActivation, addedToHierarchy, screenSystemEnabling);
     int resultScore;
     double resultPercentage;
 
+    if (!validResults && !self->get_practice()) return;
+    validResults = false;
     // disable score differences in party mode cuz idk how that's supposed to work (still shows rank as percentage tho) 
     auto* flowthingy = QuestUI::ArrayUtil::First(Resources::FindObjectsOfTypeAll<PartyFreePlayFlowCoordinator*>());
     bool isParty = flowthingy != nullptr ? flowthingy->get_isActivated() ? true : false : false;
@@ -341,6 +353,7 @@ extern "C" void load() {
     INSTALL_HOOK(getLogger(), LeaderBoard_Activate);
     INSTALL_HOOK(getLogger(), LeaderBoard_Deactivate);
     INSTALL_HOOK(getLogger(), LeaderBoard_DeActivate);
+    INSTALL_HOOK(getLogger(), TakeMeToResults_Fix);
     ScorePercentage::MultiplayerHooks::InstallHooks();
     getLogger().info("Installed all hooks!");
 }

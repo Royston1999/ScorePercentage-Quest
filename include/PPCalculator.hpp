@@ -18,15 +18,16 @@ struct RawPPData {
     float _ExpertPlus_SoloStandard = 0.0f;
 };
 
-typedef System::Action_1<UnityEngine::AsyncOperation*>* DownloadCompleteDelegate;
+typedef System::Action_1<UnityEngine::AsyncOperation*>* DownloadCompletedDelegate;
 
 namespace PPCalculator {
     namespace PP {
         static std::unordered_map<std::string, RawPPData> index;
-        static UnityEngine::Networking::UnityWebRequest* request;
 
         void Initialize();
-        void HandleWebRequestCompleted();
+        void HandlePPWebRequestCompleted(std::string text);
+        void HandleCurveWebRequestCompleted(std::string text);
+        void SendWebRequest(std::string URL, function_ptr_t<void, std::string> callback);
 
         float CalculatePP(float maxPP, float accuracy);
         float BeatmapMaxPP(std::string songID, GlobalNamespace::BeatmapDifficulty difficulty);
