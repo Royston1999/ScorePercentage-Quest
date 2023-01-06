@@ -4,24 +4,26 @@
   "info": {
     "name": "Score Percentage",
     "id": "scorepercentage",
-    "version": "3.1.0",
+    "version": "3.2.0",
     "url": null,
-    "additionalData": {}
+    "additionalData": {
+      "overrideSoName": "libscorepercentage.so"
+    }
   },
   "dependencies": [
     {
       "id": "codegen",
-      "versionRange": "^0.22.0",
+      "versionRange": "^0.32.0",
       "additionalData": {}
     },
     {
       "id": "custom-types",
-      "versionRange": "^0.15.8",
+      "versionRange": "^0.15.22",
       "additionalData": {}
     },
     {
       "id": "beatsaber-hook",
-      "versionRange": "=3.7.4",
+      "versionRange": "^3.14.0",
       "additionalData": {
         "extraFiles": [
           "src/inline-hook"
@@ -30,7 +32,7 @@
     },
     {
       "id": "questui",
-      "versionRange": "^0.13.4",
+      "versionRange": "^0.17.10",
       "additionalData": {}
     },
     {

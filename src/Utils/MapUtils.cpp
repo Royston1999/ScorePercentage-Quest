@@ -6,38 +6,34 @@
 #include "GlobalNamespace/BeatmapCharacteristicSO.hpp"
 #include "GlobalNamespace/ScoreModel.hpp"
 #include "GlobalNamespace/EnvironmentInfoSO.hpp"
-#include "GlobalNamespace/SharedCoroutineStarter.hpp"
 #include "GlobalNamespace/PlayerSpecificSettings.hpp"
-#include "GlobalNamespace/BeatmapEnvironmentHelper.hpp"
+#include "GlobalNamespace/SceneInfo.hpp"
+#include "GlobalNamespace/OverrideEnvironmentSettings.hpp"
+#include "GlobalNamespace/ColorSchemeSO.hpp"
+#include "GlobalNamespace/BeatmapDataTransformHelper.hpp"
+#include "GlobalNamespace/IBeatmapLevel.hpp"
+#include "GlobalNamespace/IDifficultyBeatmapSet.hpp"
 
-#include "UnityEngine/Resources.hpp"
-
-#include "System/Threading/Tasks/Task_1.hpp"
+#include "scoreutils/shared/ScoreUtils.hpp"
 
 using namespace GlobalNamespace;
-
-std::vector<int> routines;
+using namespace UnityEngine;
 
 namespace ScorePercentage::MapUtils{
 
-    custom_types::Helpers::Coroutine DoNewPercentageStuff(PlayerSpecificSettings* playerSpecificSettings, IDifficultyBeatmap* difficultyBeatmap)
-    {
-        int crIndex = routines.size() + 1; routines.push_back(crIndex);
-        if (scoreDetailsUI != nullptr) scoreDetailsUI->setDisplayTexts("loading...");
-        auto* envInfo = BeatmapEnvironmentHelper::GetEnvironmentInfo(difficultyBeatmap);
-        auto* result = difficultyBeatmap->GetBeatmapDataAsync(envInfo, playerSpecificSettings);
-        while (!result->get_IsCompleted()) co_yield nullptr;
-        auto* data = result->get_ResultOnSuccess();
-        if (routines.empty() || routines.size() != crIndex) co_return;
-        ClearVector<int>(&routines);
-        int maxScore = data != nullptr ? ScoreModel::ComputeMaxMultipliedScoreForBeatmap(data) : 1;
-        float currentPercentage = ScorePercentage::Utils::calculatePercentage(maxScore, mapData.currentScore);
-        mapData.currentPercentage = currentPercentage; mapData.maxScore = maxScore;
-        if (scoreDetailsUI != nullptr) data != nullptr ? scoreDetailsUI->updateInfo() : scoreDetailsUI->setDisplayTexts("failed ;(");
-        co_return;
+    void updateMapData(PlayerData* playerData, IDifficultyBeatmap* difficultyBeatmap, bool forced){
+        if (scoreDetailsUI != nullptr) scoreDetailsUI->updateInfo("loading...");
+        updateBasicMapInfo(playerData, difficultyBeatmap);
+        int maxScore = ScoreUtils::MaxScoreRetriever::RetrieveMaxScoreDataFromCache();
+        if (maxScore != -1 && scoreDetailsUI != nullptr){
+            finishedLoading = true;
+            float currentPercentage = ScorePercentage::Utils::CalculatePercentage(maxScore, mapData.currentScore);
+            mapData.currentPercentage = currentPercentage; mapData.maxScore = maxScore;
+            if (scoreDetailsUI != nullptr) scoreDetailsUI->updateInfo();
+        }
     }
 
-    void updateMapData(PlayerData* playerData, IDifficultyBeatmap* difficultyBeatmap){
+    void updateBasicMapInfo(PlayerData* playerData, IDifficultyBeatmap* difficultyBeatmap){
         auto* playerLevelStatsData = playerData->GetPlayerLevelStatsData(difficultyBeatmap);
         int currentScore = playerLevelStatsData->highScore;
         std::string mapID = playerLevelStatsData->levelID;
@@ -45,7 +41,6 @@ namespace ScorePercentage::MapUtils{
         mapData.mapID = mapID;
         int diff = difficultyBeatmap->get_difficultyRank();
         mapData.currentScore = currentScore;
-        SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(DoNewPercentageStuff(playerData->playerSpecificSettings, difficultyBeatmap)));
         mapData.diff = difficultyBeatmap->get_difficulty();
         mapData.mapType = mapType;
         mapData.isFC = playerLevelStatsData->fullCombo;

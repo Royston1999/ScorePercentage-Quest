@@ -6,7 +6,7 @@
 #include "GlobalNamespace/GameplayModifiers.hpp"
 #include "GlobalNamespace/IConnectedPlayer.hpp"
 #include "GlobalNamespace/LevelCompletionResults.hpp"
-#include "GlobalNamespace/MultiplayerConnectedPlayerScoreDiffText.hpp"
+#include "GlobalNamespace/MultiplayerScoreDiffText.hpp"
 #include "GlobalNamespace/MultiplayerConnectedPlayerSongTimeSyncController.hpp"
 #include "GlobalNamespace/MultiplayerLocalActiveClient.hpp"
 #include "GlobalNamespace/MultiplayerScoreProvider.hpp"
@@ -46,18 +46,22 @@ std::map<StringW, std::pair<std::pair<int, int>, MultiplayerConnectedPlayerSongT
 float modifierMultiplier;
 std::vector<std::pair<int, float>> scoreValues;
 
+template<class T>
+ArrayW<T> GetBeatmapDataItems(IReadonlyBeatmapData* data){
+    auto* beatmapDataItems = List<T>::New_ctor(); 
+    beatmapDataItems->AddRange(data->GetBeatmapDataItems<T>(0));
+    beatmapDataItems->items->max_length = beatmapDataItems->size;
+    return beatmapDataItems->items;
+}
+
 void CreateScoreTimeValues(IReadonlyBeatmapData* data){
         ClearVector<std::pair<int, float>>(&scoreValues);
-        auto* notes = GetBeatmapDataItems<NoteData*>(data);
-        auto* sliders = GetBeatmapDataItems<SliderData*>(data);
-        for (int i = 0; i < notes->size; i++){
-            NoteData* noteData = notes->items[i];
+        for (auto& noteData : GetBeatmapDataItems<NoteData*>(data)){
             if (noteData->scoringType != -1 && noteData->scoringType != 0){
                 scoreValues.push_back(std::make_pair(noteData->scoringType == 4 ? 85 : 115, noteData->time));
             }
         }
-        for (int i = 0; i < sliders->size; i++){
-            SliderData* sliderData = sliders->items[i];
+        for (auto& sliderData : GetBeatmapDataItems<SliderData*>(data)){
             if (sliderData->sliderType == 1){
                 for (int i = 1; i < sliderData->sliceCount; i++){
                     scoreValues.push_back(std::make_pair(20, LerpU(sliderData->time, sliderData->tailTime, i / (sliderData->sliceCount - 1))));
@@ -77,38 +81,41 @@ void CreateScoreTimeValues(IReadonlyBeatmapData* data){
     }
 
 void toggleMultiResultsTableFormat(bool value, ResultsTableCell* cell){
-    cell->dyn__rankText()->set_enableWordWrapping(!value);
-    cell->dyn__rankText()->set_richText(value);
-    cell->dyn__scoreText()->set_richText(value);
-    cell->dyn__scoreText()->set_enableWordWrapping(!value);
+    cell->rankText->set_enableWordWrapping(!value);
+    cell->rankText->set_richText(value);
+    cell->scoreText->set_richText(value);
+    cell->scoreText->set_enableWordWrapping(!value);
     int multiplier = value ? 1 : -1;
-    cell->dyn__scoreText()->get_transform()->set_localPosition(cell->dyn__scoreText()->get_transform()->get_localPosition() + Vector3(multiplier * -5, 0, 0));
-    cell->dyn__rankText()->get_transform()->set_localPosition(cell->dyn__rankText()->get_transform()->get_localPosition() + Vector3(multiplier * -2, 0, 0));
+    cell->scoreText->get_transform()->set_localPosition(cell->scoreText->get_transform()->get_localPosition() + Vector3(multiplier * -5, 0, 0));
+    cell->rankText->get_transform()->set_localPosition(cell->rankText->get_transform()->get_localPosition() + Vector3(multiplier * -2, 0, 0));
 }
 
 MAKE_HOOK_MATCH(Results_SetData, &ResultsTableCell::SetData, void, ResultsTableCell* self, int order, IConnectedPlayer* connectedPlayer, LevelCompletionResults* levelCompletionResults){
     Results_SetData(self, order, connectedPlayer, levelCompletionResults);
-    bool passedLevel = levelCompletionResults->dyn_levelEndStateType() == 1 ? true : false;
+    bool passedLevel = levelCompletionResults->levelEndStateType == 1 ? true : false;
     if (scorePercentageConfig.multiLevelEndRank){
-        if (!self->dyn__rankText()->get_richText()) toggleMultiResultsTableFormat(true, self);
-        bool isNoFail = levelCompletionResults->dyn_gameplayModifiers()->get_noFailOn0Energy() && levelCompletionResults->dyn_energy() == 0;
-        int totalMisses = levelCompletionResults->dyn_missedCount() + levelCompletionResults->dyn_badCutsCount();
-        std::string percentageText = Round(calculatePercentage(mapData.maxScore, levelCompletionResults->dyn_modifiedScore()), 2);
-        std::string score = self->dyn__scoreText()->get_text();
+        if (!self->rankText->get_richText()) toggleMultiResultsTableFormat(true, self);
+        bool isNoFail = levelCompletionResults->gameplayModifiers->get_noFailOn0Energy() && levelCompletionResults->energy == 0;
+        int totalMisses = levelCompletionResults->missedCount + levelCompletionResults->badCutsCount;
+        std::string percentageText = Round(CalculatePercentage(mapData.maxScore, levelCompletionResults->modifiedScore), 2);
+        std::string score = self->scoreText->get_text();
         std::string preText = !passedLevel ? "F" + tab : isNoFail ? "NF" + tab : "";
-        std::string missText = levelCompletionResults->dyn_fullCombo() ? "FC" : preText + "<color=red>X</color><size=65%> </size>" + std::to_string(totalMisses);
-        self->dyn__rankText()->SetText(percentageText + "<size=75%>%</size>");
-        self->dyn__scoreText()->SetText(missText + tab + score);
+        std::string missText = levelCompletionResults->fullCombo ? "FC" : preText + "<color=red>X</color><size=65%> </size>" + std::to_string(totalMisses);
+        self->rankText->SetText(percentageText + "<size=75%>%</size>");
+        self->scoreText->SetText(missText + tab + score);
+        getLogger().info("Index Max Score: %i", myIndexScore.second);
+        getLogger().info("Index Score Percentage: %.2f", CalculatePercentage(myIndexScore.second, levelCompletionResults->modifiedScore));
+        getLogger().info("True Final Score: %.2f", CalculatePercentage(mapData.maxScore, levelCompletionResults->modifiedScore));
     }
     else{
-        if (self->dyn__rankText()->get_richText()) toggleMultiResultsTableFormat(false, self);
-        if (!passedLevel) self->dyn__rankText()->SetText("F");
-        else self->dyn__rankText()->SetText(RankModel::GetRankName(levelCompletionResults->dyn_rank()));
+        if (self->rankText->get_richText()) toggleMultiResultsTableFormat(false, self);
+        if (!passedLevel) self->rankText->SetText("F");
+        else self->rankText->SetText(RankModel::GetRankName(levelCompletionResults->rank));
     }
     // write new highscore to file
-    if (connectedPlayer->get_isMe() && (levelCompletionResults->dyn_modifiedScore() - mapData.currentScore > 0) && passedLevel && bs_utils::Submission::getEnabled()){
-        int misses = levelCompletionResults->dyn_missedCount();
-        int badCut = levelCompletionResults->dyn_badCutsCount();
+    if (connectedPlayer->get_isMe() && (levelCompletionResults->modifiedScore - mapData.currentScore > 0) && passedLevel && bs_utils::Submission::getEnabled()){
+        int misses = levelCompletionResults->missedCount;
+        int badCut = levelCompletionResults->badCutsCount;
         std::string currentTime = System::DateTime::get_UtcNow().ToLocalTime().ToString("D");
         ConfigHelper::UpdateBeatMapInfo(mapData.mapID, mapData.idString, misses, badCut, pauseCount, currentTime);
     }
@@ -122,7 +129,7 @@ MAKE_HOOK_MATCH(ScoreRingManager_UpdateScoreText, &MultiplayerScoreRingManager::
             hasBeenNitod = true;
             scoreRingItem->SetName("MUNCHKIN");
         }
-        bool flag = self->dyn__scoreProvider()->TryGetScore(playerToUpdate->get_userId(), player);
+        bool flag = self->scoreProvider->TryGetScore(playerToUpdate->get_userId(), player);
         if (!flag || player->get_isFailed()){
             scoreRingItem->SetScore("X"); return;
         }
@@ -137,7 +144,7 @@ MAKE_HOOK_MATCH(ScoreRingManager_UpdateScoreText, &MultiplayerScoreRingManager::
             indexScore = &x->second.first;
         }
         else if (playerToUpdate->get_isMe()){
-            currentSongTime = myTimeController->dyn__songTime();
+            currentSongTime = myTimeController->songTime;
             indexScore = &myIndexScore;
         }
         else return;
@@ -150,32 +157,32 @@ MAKE_HOOK_MATCH(ScoreRingManager_UpdateScoreText, &MultiplayerScoreRingManager::
             }
         }
         int userScore = player->get_score();
-        std::string userPercentage = Round(calculatePercentage(indexScore->second, userScore), 2);
+        std::string userPercentage = Round(CalculatePercentage(indexScore->second, userScore), 2);
         scoreRingItem->SetScore(std::to_string(userScore) + " (" + userPercentage + "%)");
     }
     else ScoreRingManager_UpdateScoreText(self, playerToUpdate);
 }
 
-MAKE_HOOK_MATCH(ScoreDiff_UpdateText, &MultiplayerConnectedPlayerScoreDiffText::AnimateScoreDiff, void, MultiplayerConnectedPlayerScoreDiffText* self, int scoreDiff){
+MAKE_HOOK_MATCH(ScoreDiff_UpdateText, &MultiplayerScoreDiffText::AnimateScoreDiff, void, MultiplayerScoreDiffText* self, int scoreDiff){
     ScoreDiff_UpdateText(self, scoreDiff);
     if (myTimeController != nullptr && scorePercentageConfig.multiPercentageDifference){
-        if(self->dyn__onPlatformText()->get_enableWordWrapping()){
-            self->dyn__onPlatformText()->set_richText(true);
-            self->dyn__onPlatformText()->set_enableWordWrapping(false);
-            auto* transform = (RectTransform*)(self->dyn__backgroundSpriteRenderer()->get_transform());
+        if(self->onPlatformText->get_enableWordWrapping()){
+            self->onPlatformText->set_richText(true);
+            self->onPlatformText->set_enableWordWrapping(false);
+            auto* transform = (RectTransform*)(self->backgroundSpriteRenderer->get_transform());
             transform->set_localScale({transform->get_localScale().x *2.0f, transform->get_localScale().y, 0.0f});
         }
-        std::string baseText = self->dyn__onPlatformText()->get_text();
+        std::string baseText = self->onPlatformText->get_text();
         int maxPossibleScore = myIndexScore.second;
         std::string posneg = (scoreDiff >= 0) ? "+" : "";
-        std::string percentageText = " (" + posneg + Round(calculatePercentage(maxPossibleScore, scoreDiff), 2) + "%)";
-        self->dyn__onPlatformText()->SetText(baseText + percentageText);
+        std::string percentageText = " (" + posneg + Round(CalculatePercentage(maxPossibleScore, scoreDiff), 2) + "%)";
+        self->onPlatformText->SetText(baseText + percentageText);
     }
     else if (!scorePercentageConfig.multiPercentageDifference){
-        if(!self->dyn__onPlatformText()->get_enableWordWrapping()){
-            self->dyn__onPlatformText()->set_richText(false);
-            self->dyn__onPlatformText()->set_enableWordWrapping(true);
-            auto* transform = (RectTransform*)(self->dyn__backgroundSpriteRenderer()->get_transform());
+        if(!self->onPlatformText->get_enableWordWrapping()){
+            self->onPlatformText->set_richText(false);
+            self->onPlatformText->set_enableWordWrapping(true);
+            auto* transform = (RectTransform*)(self->backgroundSpriteRenderer->get_transform());
             transform->set_localScale({transform->get_localScale().x /2.0f, transform->get_localScale().y, 0.0f});
         }
     }
@@ -183,7 +190,7 @@ MAKE_HOOK_MATCH(ScoreDiff_UpdateText, &MultiplayerConnectedPlayerScoreDiffText::
 
 MAKE_HOOK_MATCH(Local_Start, &MultiplayerLocalActiveClient::Start, void, MultiplayerLocalActiveClient* self){
     Local_Start(self);
-    myTimeController = self->dyn__audioTimeSyncController();
+    myTimeController = self->audioTimeSyncController;
     myIndexScore = std::make_pair(0, 0);
 }
 

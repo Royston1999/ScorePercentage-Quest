@@ -5,6 +5,8 @@
 #include "ScorePercentageConfig.hpp"
 #include "ScoreDetailsModal.hpp"
 #include "GlobalNamespace/MultiplayerConnectedPlayerSongTimeSyncController.hpp"
+#include "UnityEngine/UI/Button.hpp"
+#include "GlobalNamespace/MenuTransitionsHelper.hpp"
 // beatsaber-hook is a modding framework that lets us call functions and fetch field values from in the game
 // It also allows creating objects, configuration, and importantly, hooking methods to modify their values
 #include "beatsaber-hook/shared/utils/logging.hpp"
@@ -37,6 +39,6 @@ extern std::vector<int> routines;
 extern float modifierMultiplier;
 extern int pauseCount;
 extern bool modalSettingsChanged;
-extern bool noException;
 extern bool hasBeenNitod;
 extern bool FUCKINGBEATSAVIORSUCKMYCOCK;
+extern bool finishedLoading;

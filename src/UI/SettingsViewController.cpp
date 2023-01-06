@@ -1,11 +1,6 @@
 #include "UI/SettingsViewController.hpp"
 #include "UI/SettingsFlowCoordinator.hpp"
 
-#include "GlobalNamespace/OVRPlugin.hpp"
-#include "GlobalNamespace/OVRPlugin_SystemHeadset.hpp"
-#include "HMUI/ViewController_AnimationDirection.hpp"
-#include "HMUI/ViewController_AnimationType.hpp"
-
 DEFINE_TYPE(ScoreDetailsUI::Views, SettingsViewController);
 
 void ScoreDetailsUI::Views::SettingsViewController::DidActivate(

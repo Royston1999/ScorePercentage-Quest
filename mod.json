@@ -1,21 +1,46 @@
 {
-    "_QPVersion": "0.1.1",
-    "name": "Score Percentage",
-    "id": "scorepercentage",
-    "author": "Polly51104",
-    "version": "3.1.1",
-    "coverImage": "Cover.jpg",
-    "packageId": "com.beatgames.beatsaber",
-    "packageVersion": "1.21.0",
-    "description": "shows extra information after completing a level",
-    "modFiles": [
-        "libscorepercentage.so"
-    ],
-    "libraryFiles": [
-        "libbs-utils.so",
-        "libbeatsaber-hook_3_7_4.so",
-        "libbeatsaber-hook_3_6_8.so"
-    ],
-    "fileCopies": [
-    ]
+  "_QPVersion": "0.1.1",
+  "name": "Score Percentage",
+  "id": "scorepercentage",
+  "author": "Polly51104",
+  "version": "3.2.0",
+  "packageId": "com.beatgames.beatsaber",
+  "packageVersion": "1.27.0_3631150051",
+  "description": "shows extra information after completing a level",
+  "coverImage": "Cover.jpg",
+  "dependencies": [
+    {
+      "version": "^0.7.0",
+      "id": "bs-utils",
+      "downloadIfMissing": "https://github.com/sc2ad/QuestBS-Utils/releases/download/v0.7.2/BS-Utils.qmod"
+    },
+    {
+      "version": "^0.15.22",
+      "id": "custom-types",
+      "downloadIfMissing": "https://github.com/sc2ad/Il2CppQuestTypePatching/releases/download/v0.15.22/CustomTypes.qmod"
+    },
+    {
+      "version": "^0.32.0",
+      "id": "codegen",
+      "downloadIfMissing": "https://github.com/sc2ad/BeatSaber-Quest-Codegen/releases/download/v0.32.0/Codegen.qmod"
+    },
+    {
+      "version": "^0.17.10",
+      "id": "questui",
+      "downloadIfMissing": "https://github.com/darknight1050/QuestUI/releases/download/v0.17.10/QuestUI.qmod"
+    },
+    {
+      "version": "^0.1.0",
+      "id": "ScoreUtils",
+      "downloadIfMissing": "https://github.com/Royston1999/ScoreUtils/releases/download/v0.1.0/ScoreUtils.qmod"
+    }
+  ],
+  "modFiles": [
+    "libscorepercentage.so"
+  ],
+  "libraryFiles": [
+    "libbeatsaber-hook_3_14_0.so"
+  ],
+  "fileCopies": [],
+  "copyExtensions": []
 }

@@ -4,7 +4,12 @@
 #include "UnityEngine/Material.hpp"
 #include "UnityEngine/Rect.hpp"
 #include "UnityEngine/UI/ColorBlock.hpp"
+#include "UnityEngine/Time.hpp"
+#include "System/Action.hpp"
+#include "custom-types/shared/delegate.hpp"
 #include "main.hpp"
+#include "Utils/MapUtils.hpp"
+#include "Utils/EasyDelegate.hpp"
 
 using namespace QuestUI::BeatSaberUI;
 using namespace UnityEngine;
@@ -21,7 +26,7 @@ void ScorePercentage::initModalPopup(ScorePercentage::ModalPopup** modalUIPointe
     }
     int x = 25 + (6 * uiText);
     if (modalUI == nullptr) modalUI = (ScorePercentage::ModalPopup*) malloc(sizeof(ScorePercentage::ModalPopup));
-    modalUI->modal = CreateModal(parent, UnityEngine::Vector2(60, x), [](HMUI::ModalView *modal) {}, true);
+    modalUI->modal = CreateModal(parent, UnityEngine::Vector2(60, x), [](HMUI::ModalView *modal) {}, !scorePercentageConfig.alwaysOpen);
     modalSettingsChanged = false;
     
     modalUI->list = CreateVerticalLayoutGroup(modalUI->modal->get_transform());
@@ -32,16 +37,26 @@ void ScorePercentage::initModalPopup(ScorePercentage::ModalPopup** modalUIPointe
     // 21
     int y = 6 + (3 * uiText);
     modalUI->title = CreateText(modalUI->modal->get_transform(), "<size=150%>SCORE DETAILS</size>", UnityEngine::Vector2(14, y));
-    modalUI->score = CreateText(modalUI->list->get_transform(), "");
-    modalUI->maxCombo = CreateText(modalUI->list->get_transform(), "");
-    if (scorePercentageConfig.uiPlayCount) modalUI->playCount = CreateText(modalUI->list->get_transform(), "");
-    if (scorePercentageConfig.uiMissCount) modalUI->missCount = CreateText(modalUI->list->get_transform(), "");
-    if (scorePercentageConfig.uiBadCutCount) modalUI->badCutCount = CreateText(modalUI->list->get_transform(), "");
-    if (scorePercentageConfig.uiPauseCount) modalUI->pauseCountGUI = CreateText(modalUI->list->get_transform(), "");
-    if (scorePercentageConfig.uiDatePlayed) modalUI->datePlayed = CreateText(modalUI->list->get_transform(), "");
+    modalUI->score = CreateText(modalUI->list->get_transform(), "", false);
+    modalUI->maxCombo = CreateText(modalUI->list->get_transform(), "", false);
+    if (scorePercentageConfig.uiPlayCount) modalUI->playCount = CreateText(modalUI->list->get_transform(), "", false);
+    if (scorePercentageConfig.uiMissCount) modalUI->missCount = CreateText(modalUI->list->get_transform(), "", false);
+    if (scorePercentageConfig.uiBadCutCount) modalUI->badCutCount = CreateText(modalUI->list->get_transform(), "", false);
+    if (scorePercentageConfig.uiPauseCount) modalUI->pauseCountGUI = CreateText(modalUI->list->get_transform(), "", false);
+    if (scorePercentageConfig.uiDatePlayed) modalUI->datePlayed = CreateText(modalUI->list->get_transform(), "", false);
 
+    modalUI->loadingCircle = Object::Instantiate(
+        Resources::FindObjectsOfTypeAll<HMUI::ImageView*>().FirstOrDefault([](auto x){ 
+            return x->get_gameObject()->get_name() == "LoadingIndicator"; 
+        })->get_gameObject(), modalUI->modal->get_transform(), false);
+    modalUI->loadingCircle->AddComponent<LayoutElement*>();
+    modalUI->list->get_gameObject()->SetActive(false);
+    
     modalUI->openButton = CreateUIButton(parent, "", "PracticeButton", {-47.0f, 0.0f}, {10.0f, 11.0f}, [modalUI](){
-        modalUI->modal->Show(true, true, nullptr);
+        modalUI->updateInfo("Loading...");
+        modalUI->modal->Show(true, true, EasyDelegate::MakeDelegate<System::Action*>([modalUI](){
+            MapUtils::updateMapData(modalUI->playerData, modalUI->currentMap, true);
+        }));
     });
     auto contentTransform = modalUI->openButton->get_transform()->Find("Content");
     Object::Destroy(contentTransform->Find("Text")->get_gameObject());
@@ -57,10 +72,9 @@ void ScorePercentage::initModalPopup(ScorePercentage::ModalPopup** modalUIPointe
     imageView->set_preserveAspect(true);
     imageView->get_transform()->set_localScale({1.7f, 1.7f, 1.7f});
     auto BG = QuestUI::ArrayUtil::First(modalUI->openButton->get_transform()->GetComponentsInChildren<HMUI::ImageView*>(), [](HMUI::ImageView* x) { return x->get_name() == "BG"; });
-    BG->dyn__skew() = 0.0f;
+    BG->skew = 0.0f;
 
     modalUI->closeButton = CreateUIButton(modalUI->modal->get_transform(), "X", "PracticeButton", UnityEngine::Vector2(25, y + 2.3f), {8.0f, 8.0f}, [modalUI](){
-        noException = true;
         modalUI->modal->Hide(true, nullptr);
     });
     Object::Destroy(modalUI->closeButton->GetComponentInChildren<LayoutElement*>());
@@ -68,7 +82,7 @@ void ScorePercentage::initModalPopup(ScorePercentage::ModalPopup** modalUIPointe
     Object::Destroy(modalUI->closeButton->get_transform()->GetComponentInChildren<TMPro::TextMeshProUGUI*>()->get_gameObject());
     modalUI->closeButton->set_name("ScoreDetailsCloseButton");
     auto closeBG = QuestUI::ArrayUtil::First(modalUI->closeButton->get_transform()->GetComponentsInChildren<HMUI::ImageView*>(), [](HMUI::ImageView* x) { return x->get_name() == "BG"; });
-    closeBG->dyn__skew() = 0.0f;
+    closeBG->skew = 0.0f;
     auto* transform = QuestUI::BeatSaberUI::CreateCanvas()->get_transform();
     auto* closeText = CreateText(transform, "X", false, {0.0f, 1.87f}, {10.0f, 10.0f});
     transform->set_localScale({1.2f, 1.2f, 0.0f});
@@ -78,7 +92,19 @@ void ScorePercentage::initModalPopup(ScorePercentage::ModalPopup** modalUIPointe
     *modalUIPointer = modalUI;
 }
 
-void ScorePercentage::ModalPopup::updateInfo(){
+void ScorePercentage::ModalPopup::updateInfo(std::string text){
+    if (text != "") {
+        list->get_gameObject()->set_active(false);
+        loadingCircle->set_active(true);
+        return setDisplayTexts(text);
+    }
+    if (!hasValidScoreData || mapData.maxScore == -1) {
+        list->get_gameObject()->set_active(true);
+        loadingCircle->set_active(false);
+        return setDisplayTexts("failed ;(");
+    }
+    loadingCircle->set_active(false);
+    list->get_gameObject()->set_active(true);
     double currentDifficultyPercentageScore = mapData.currentPercentage;
 
     bool isStandardLevel = mapData.mapType.compare("Standard") == 0;

@@ -96,6 +96,7 @@ void ScoreDetailsUI::Views::ScoreDetailsUIViewController::DidActivate(bool first
         alwaysOnToggle = CreateToggle(scoreDetailsContainer->get_transform(), "UI always open", scorePercentageConfig.alwaysOpen, 
             [](bool value) {
                 setBool(getConfig().config, "alwaysOpen", value, false);
+                modalSettingsChanged = true;
             });
 
         AddHoverHint(alwaysOnToggle->get_gameObject(), "UI Popup is always popped up");

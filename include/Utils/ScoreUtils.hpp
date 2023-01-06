@@ -6,7 +6,7 @@
 
 namespace ScorePercentage::Utils{
     int calculateMaxScore(int blockCount);
-    double calculatePercentage(int maxScore, int resultScore);
+    double CalculatePercentage(int maxScore, int resultScore);
     std::string Round(float val, int precision);
     std::string valueDifferenceString(float valueDifference);
     std::string createScoreText(std::string text);

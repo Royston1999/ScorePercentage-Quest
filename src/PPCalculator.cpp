@@ -1,5 +1,9 @@
 #include "PPCalculator.hpp"
 #include "main.hpp"
+#include "custom-types/shared/delegate.hpp"
+
+using namespace ScorePercentage;
+using namespace UnityEngine;
 
 int PP_CURVE_SIZE = 0;
 std::vector<std::pair<float, float>> ppCurve;
@@ -7,43 +11,51 @@ std::vector<float> ppCurveSlopes;
 
 const std::string CURVE_DATA_URL = "https://raw.githubusercontent.com/Royston1999/ScorePercentage-Quest/main/curve.json";
 
-#define DLCompletedDeleg(Type, Func) il2cpp_utils::MakeDelegate<Type>(classof(Type), static_cast<std::function<void()>>(Func)) \
-
-void PPCalculator::PP::SendWebRequest(std::string URL, function_ptr_t<void, std::string> callback){
+void WebUtils::SendWebRequest(std::string URL, callback_ptr callback){
     auto request = UnityEngine::Networking::UnityWebRequest::Get(URL);
     request->SetRequestHeader("User-Agent", std::string(ID) + " " + VERSION);
-    request->SendWebRequest()->add_completed(DLCompletedDeleg(DownloadCompletedDelegate, [=](){
+    request->SendWebRequest()->add_completed(DLCompletedDeleg([=](auto* value){
         callback(request->get_downloadHandler()->GetText());
     }));
 }
 
 void PPCalculator::PP::Initialize() {
-    SendWebRequest(CURVE_DATA_URL, PPCalculator::PP::HandleCurveWebRequestCompleted);
+    // SendWebRequest(CURVE_DATA_URL, PPCalculator::PP::HandleCurveWebRequestCompleted);
+    WebUtils::SendWebRequest(CURVE_DATA_URL, [](std::string response){
+        rapidjson::Document document;
+        document.Parse(response.c_str());
+        if (document.Empty()) return;
+        auto curveArray = document.FindMember("curve")->value.GetArray();
+        PP_CURVE_SIZE = curveArray.Size();
+        for (int i=PP_CURVE_SIZE-1; i>=0; i--){
+            auto coords = curveArray[i].GetArray();
+            ppCurve.push_back(std::make_pair(coords[0].GetFloat(), coords[1].GetFloat()));
+        }
+
+        for (auto i = 0; i < PP_CURVE_SIZE - 1; i++) {
+            auto x1 = ppCurve[i].first;
+            auto y1 = ppCurve[i].second;
+            auto x2 = ppCurve[i+1].first;
+            auto y2 = ppCurve[i+1].second;
+
+            auto m = (y2 - y1) / (x2 - x1);
+            ppCurveSlopes.push_back(m);
+        }
+
+        std::string URL = document.FindMember("ppData")->value.GetString();
+
+        WebUtils::SendWebRequest(URL, PPCalculator::PP::HandlePPWebRequestCompleted);
+
+        // WebUtils::SendWebRequest("https://www.example.com", [](std::string response){
+
+        //     // hello this is the code block inside of the lambda that will run once the web request completes.
+        //     // the string should be empty if the request fails
+
+        // });
+
+        });
 }
 
-void PPCalculator::PP::HandleCurveWebRequestCompleted(std::string text) {
-    rapidjson::Document document;
-    document.Parse(text.c_str());
-    if (document.Empty()) return;
-    auto curveArray = document.FindMember("curve")->value.GetArray();
-    PP_CURVE_SIZE = curveArray.Size();
-    for (int i=PP_CURVE_SIZE-1; i>=0; i--){
-        auto coords = curveArray[i].GetArray();
-        ppCurve.push_back(std::make_pair(coords[0].GetFloat(), coords[1].GetFloat()));
-    }
-
-    for (auto i = 0; i < PP_CURVE_SIZE - 1; i++) {
-        auto x1 = ppCurve[i].first;
-        auto y1 = ppCurve[i].second;
-        auto x2 = ppCurve[i+1].first;
-        auto y2 = ppCurve[i+1].second;
-
-        auto m = (y2 - y1) / (x2 - x1);
-        ppCurveSlopes.push_back(m);
-    }
-    std::string URL = document.FindMember("ppData")->value.GetString();
-    SendWebRequest(URL, PPCalculator::PP::HandlePPWebRequestCompleted);
-}
 
 void PPCalculator::PP::HandlePPWebRequestCompleted(std::string text) {
     rapidjson::Document document;
@@ -70,9 +82,7 @@ float RatioOfMaxPP(float accuracy) {
 
     auto accuracyFloor = ppCurve[i].first;
     auto ppFloor = ppCurve[i].second;
-    getLogger().info("name: %2f", accuracyFloor);
     float ratio = ppCurveSlopes[i] * (accuracy - accuracyFloor) + ppFloor;
-    getLogger().info("name: %2f", ratio);
     return ratio;
 }
 
@@ -87,7 +97,6 @@ float PPCalculator::PP::CalculatePP(float maxPP, float accuracy) {
 }
 
 float PPCalculator::PP::BeatmapMaxPP(std::string songID, GlobalNamespace::BeatmapDifficulty difficulty) {
-    getLogger().info("name: %s", static_cast<std::string>(songID).c_str());
     auto itr = index.find(SongIDToHash(songID));
     if (itr == index.end()) return -1;
 

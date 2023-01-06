@@ -115,6 +115,8 @@
         "xutility": "cpp",
         "stop_token": "cpp",
         "__memory": "cpp",
-        "format": "cpp"
+        "format": "cpp",
+        "__functional_03": "cpp",
+        "ranges": "cpp"
     }
 }

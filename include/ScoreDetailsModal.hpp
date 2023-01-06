@@ -14,6 +14,7 @@
 #include "GlobalNamespace/PlayerLevelStatsData.hpp"
 #include "GlobalNamespace/BeatmapData.hpp"
 #include "GlobalNamespace/BeatmapCharacteristicSO.hpp"
+#include "GlobalNamespace/PlayerData.hpp"
 
 namespace ScorePercentage{
     class ModalPopup{
@@ -30,7 +31,10 @@ namespace ScorePercentage{
             UnityEngine::UI::Button* openButton;
             UnityEngine::UI::Button* closeButton;
             UnityEngine::UI::VerticalLayoutGroup* list;
-            void updateInfo();
+            UnityEngine::GameObject* loadingCircle;
+            GlobalNamespace::IDifficultyBeatmap* currentMap;
+            GlobalNamespace::PlayerData* playerData;
+            void updateInfo(std::string text = "");
             void setDisplayTexts(std::string text);
             std::function<void()> onScoreDetails;
             bool hasValidScoreData;

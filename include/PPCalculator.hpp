@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include "custom-types/shared/delegate.hpp"
 #include "beatsaber-hook/shared/config/rapidjson-utils.hpp"
 #include "beatsaber-hook/shared/utils/il2cpp-utils.hpp"
 #include "GlobalNamespace/BeatmapDifficulty.hpp"
@@ -10,6 +11,11 @@
 #include "UnityEngine/AsyncOperation.hpp"
 #include "System/Action_1.hpp"
 
+typedef System::Action_1<UnityEngine::AsyncOperation*>* DLFinish;
+using callback_ptr = void(*)(std::string);
+
+#define DLCompletedDeleg(Func) custom_types::MakeDelegate<DLFinish>(classof(DLFinish), static_cast<std::function<void(UnityEngine::AsyncOperation*)>>(Func)) \
+
 struct RawPPData {
     float _Easy_SoloStandard = 0.0f;
     float _Normal_SoloStandard = 0.0f;
@@ -18,18 +24,17 @@ struct RawPPData {
     float _ExpertPlus_SoloStandard = 0.0f;
 };
 
-typedef System::Action_1<UnityEngine::AsyncOperation*>* DownloadCompletedDelegate;
-
 namespace PPCalculator {
     namespace PP {
         static std::unordered_map<std::string, RawPPData> index;
 
         void Initialize();
         void HandlePPWebRequestCompleted(std::string text);
-        void HandleCurveWebRequestCompleted(std::string text);
-        void SendWebRequest(std::string URL, function_ptr_t<void, std::string> callback);
-
         float CalculatePP(float maxPP, float accuracy);
         float BeatmapMaxPP(std::string songID, GlobalNamespace::BeatmapDifficulty difficulty);
     }
+}
+
+namespace ScorePercentage::WebUtils{
+    void SendWebRequest(std::string URL, callback_ptr callback);
 }

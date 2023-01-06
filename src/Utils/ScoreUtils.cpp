@@ -43,7 +43,7 @@ namespace ScorePercentage::Utils{
         return differenceColor + positiveIndicator + (ceilf(valueDifference) != valueDifference ? Round(valueDifference, 2) : Round(valueDifference, 0));
     }
 
-    double calculatePercentage(int maxScore, int resultScore)
+    double CalculatePercentage(int maxScore, int resultScore)
     {
         if (maxScore == 0) return 0.0f;
         double resultPercentage = (double)(100 / (double)maxScore * (double)resultScore);
