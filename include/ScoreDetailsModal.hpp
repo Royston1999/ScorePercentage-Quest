@@ -38,6 +38,7 @@ namespace ScorePercentage{
             void setDisplayTexts(std::string text);
             std::function<void()> onScoreDetails;
             bool hasValidScoreData;
+            bool modalSettingsChanged;
     };
     void initModalPopup(ModalPopup** modalUI, UnityEngine::Transform* parent);
 }

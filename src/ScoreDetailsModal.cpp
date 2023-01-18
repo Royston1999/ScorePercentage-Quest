@@ -27,7 +27,7 @@ void ScorePercentage::initModalPopup(ScorePercentage::ModalPopup** modalUIPointe
     int x = 25 + (6 * uiText);
     if (modalUI == nullptr) modalUI = (ScorePercentage::ModalPopup*) malloc(sizeof(ScorePercentage::ModalPopup));
     modalUI->modal = CreateModal(parent, UnityEngine::Vector2(60, x), [](HMUI::ModalView *modal) {}, !GET_VALUE(alwaysOpen));
-    modalSettingsChanged = false;
+    modalUI->modalSettingsChanged = false;
     
     modalUI->list = CreateVerticalLayoutGroup(modalUI->modal->get_transform());
     modalUI->list->set_spacing(-1.0f);
@@ -67,11 +67,11 @@ void ScorePercentage::initModalPopup(ScorePercentage::ModalPopup** modalUIPointe
     auto imageView = iconGameObject->AddComponent<HMUI::ImageView*>();
     auto iconTransform = imageView->get_rectTransform();
     iconTransform->SetParent(contentTransform, false);
-    imageView->set_material(QuestUI::ArrayUtil::First(Resources::FindObjectsOfTypeAll<Material*>(), [](Material* x) { return x->get_name() == "UINoGlow"; }));
+    imageView->set_material(Resources::FindObjectsOfTypeAll<Material*>().FirstOrDefault([](Material* x) { return x->get_name() == "UINoGlow"; }));
     imageView->set_sprite(QuestUI::BeatSaberUI::Base64ToSprite(Sprites::scoreDetailsButton));
     imageView->set_preserveAspect(true);
     imageView->get_transform()->set_localScale({1.7f, 1.7f, 1.7f});
-    auto BG = QuestUI::ArrayUtil::First(modalUI->openButton->get_transform()->GetComponentsInChildren<HMUI::ImageView*>(), [](HMUI::ImageView* x) { return x->get_name() == "BG"; });
+    auto BG = modalUI->openButton->get_transform()->GetComponentsInChildren<HMUI::ImageView*>().FirstOrDefault([](HMUI::ImageView* x) { return x->get_name() == "BG"; });
     BG->skew = 0.0f;
 
     modalUI->closeButton = CreateUIButton(modalUI->modal->get_transform(), "X", "PracticeButton", UnityEngine::Vector2(25, y + 2.3f), {8.0f, 8.0f}, [modalUI](){
@@ -81,7 +81,7 @@ void ScorePercentage::initModalPopup(ScorePercentage::ModalPopup** modalUIPointe
     Object::Destroy(modalUI->closeButton->get_transform()->Find("Underline")->get_gameObject());
     Object::Destroy(modalUI->closeButton->get_transform()->GetComponentInChildren<TMPro::TextMeshProUGUI*>()->get_gameObject());
     modalUI->closeButton->set_name("ScoreDetailsCloseButton");
-    auto closeBG = QuestUI::ArrayUtil::First(modalUI->closeButton->get_transform()->GetComponentsInChildren<HMUI::ImageView*>(), [](HMUI::ImageView* x) { return x->get_name() == "BG"; });
+    auto closeBG = modalUI->closeButton->get_transform()->GetComponentsInChildren<HMUI::ImageView*>().FirstOrDefault([](HMUI::ImageView* x) { return x->get_name() == "BG"; });
     closeBG->skew = 0.0f;
     auto* transform = QuestUI::BeatSaberUI::CreateCanvas()->get_transform();
     auto* closeText = CreateText(transform, "X", false, {0.0f, 1.87f}, {10.0f, 10.0f});

@@ -21,7 +21,6 @@
 
 #include "HMUI/ButtonStaticAnimations.hpp"
 #include "HMUI/TitleViewController.hpp"
-#include "questui/shared/ArrayUtil.hpp"
 
 using namespace VRUIControls;
 using namespace HMUI;

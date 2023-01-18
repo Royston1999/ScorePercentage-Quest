@@ -48,7 +48,7 @@ void ScoreDetailsUI::Views::ScoreDetailsUIViewController::DidActivate(bool first
         ppToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display PP", GET_VALUE(uiPP), 
             [](bool value) {
                 getScorePercentageConfig().uiPP.SetValue(value);
-                modalSettingsChanged = true;
+                scoreDetailsUI->modalSettingsChanged = true;
             });
         
         AddHoverHint(ppToggle->get_gameObject(), "Displays amount of pp given by the score if the map is ranked (playing with positive modifiers will make this value innacurate)");
@@ -56,7 +56,7 @@ void ScoreDetailsUI::Views::ScoreDetailsUIViewController::DidActivate(bool first
         playCountToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display Play Count", GET_VALUE(uiPlayCount), 
             [](bool value) {
                 getScorePercentageConfig().uiPlayCount.SetValue(value);
-                modalSettingsChanged = true;
+                scoreDetailsUI->modalSettingsChanged = true;
             });
 
         AddHoverHint(playCountToggle->get_gameObject(), "Displays number of times the map has been played");    
@@ -64,7 +64,7 @@ void ScoreDetailsUI::Views::ScoreDetailsUIViewController::DidActivate(bool first
         missCountToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display Miss Count", GET_VALUE(uiMissCount), 
             [](bool value) {
                 getScorePercentageConfig().uiMissCount.SetValue(value);
-                modalSettingsChanged = true;
+                scoreDetailsUI->modalSettingsChanged = true;
             });
 
         AddHoverHint(missCountToggle->get_gameObject(), "Displays number of misses");
@@ -72,7 +72,7 @@ void ScoreDetailsUI::Views::ScoreDetailsUIViewController::DidActivate(bool first
         badCutCountToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display Bad Cut Count", GET_VALUE(uiBadCutCount), 
             [](bool value) {
                 getScorePercentageConfig().uiBadCutCount.SetValue(value);
-                modalSettingsChanged = true;
+                scoreDetailsUI->modalSettingsChanged = true;
             });
 
         AddHoverHint(badCutCountToggle->get_gameObject(), "Displays number of bad cuts");
@@ -80,7 +80,7 @@ void ScoreDetailsUI::Views::ScoreDetailsUIViewController::DidActivate(bool first
         pauseCountToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display Pause Count", GET_VALUE(uiPauseCount), 
             [](bool value) {
                 getScorePercentageConfig().uiPauseCount.SetValue(value);
-                modalSettingsChanged = true;
+                scoreDetailsUI->modalSettingsChanged = true;
             });
 
         AddHoverHint(pauseCountToggle->get_gameObject(), "Displays number of times the game was paused during the level");
@@ -88,7 +88,7 @@ void ScoreDetailsUI::Views::ScoreDetailsUIViewController::DidActivate(bool first
         datePlayedToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display Date Played", GET_VALUE(uiDatePlayed), 
             [](bool value) {
                 getScorePercentageConfig().uiDatePlayed.SetValue(value);
-                modalSettingsChanged = true;
+                scoreDetailsUI->modalSettingsChanged = true;
             });
 
         AddHoverHint(datePlayedToggle->get_gameObject(), "Displays the date on which the most recent score was set");
@@ -96,7 +96,7 @@ void ScoreDetailsUI::Views::ScoreDetailsUIViewController::DidActivate(bool first
         alwaysOnToggle = CreateToggle(scoreDetailsContainer->get_transform(), "UI always open", GET_VALUE(alwaysOpen), 
             [](bool value) {
                 getScorePercentageConfig().alwaysOpen.SetValue(value);
-                modalSettingsChanged = true;
+                scoreDetailsUI->modalSettingsChanged = true;
             });
 
         AddHoverHint(alwaysOnToggle->get_gameObject(), "UI Popup is always popped up");

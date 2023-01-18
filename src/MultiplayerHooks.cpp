@@ -39,7 +39,6 @@ using namespace ScorePercentage::MapUtils;
 using namespace UnityEngine;
 
 std::string nitoID = "QXzRo+cwkPArBeq+0i4yxw";
-bool hasBeenNitod;
 std::pair<int, int> myIndexScore;
 AudioTimeSyncController* myTimeController;
 std::map<StringW, std::pair<std::pair<int, int>, MultiplayerConnectedPlayerSongTimeSyncController*>> playerInfos;
@@ -117,7 +116,7 @@ MAKE_HOOK_MATCH(Results_SetData, &ResultsTableCell::SetData, void, ResultsTableC
         int misses = levelCompletionResults->missedCount;
         int badCut = levelCompletionResults->badCutsCount;
         std::string currentTime = System::DateTime::get_UtcNow().ToLocalTime().ToString("D");
-        ConfigHelper::UpdateBeatMapInfo(mapData.mapID, mapData.idString, misses, badCut, pauseCount, currentTime);
+        ConfigHelper::UpdateBeatMapInfo(mapData.mapID, mapData.idString, misses, badCut, 0, currentTime);
     }
 }
 
@@ -125,10 +124,6 @@ MAKE_HOOK_MATCH(ScoreRingManager_UpdateScoreText, &MultiplayerScoreRingManager::
     if (GET_VALUE(multiLivePercentages)){
         MultiplayerScoreProvider::RankedPlayer* player;
         auto* scoreRingItem = self->GetScoreRingItem(playerToUpdate->get_userId());
-        if (!hasBeenNitod && playerToUpdate->get_userId() == nitoID){
-            hasBeenNitod = true;
-            scoreRingItem->SetName("MUNCHKIN");
-        }
         bool flag = self->scoreProvider->TryGetScore(playerToUpdate->get_userId(), player);
         if (!flag || player->get_isFailed()){
             scoreRingItem->SetScore("X"); return;

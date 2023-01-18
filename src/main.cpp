@@ -88,16 +88,15 @@ ScorePercentageConfig scorePercentageConfig;
 ModInfo modInfo;
 ScorePercentage::ModalPopup* scoreDetailsUI = nullptr;
 int pauseCount = 0;
-bool modalSettingsChanged = false;
 BeatMapData mapData;
-Il2CppString* origRankText = nullptr;
+Il2CppString* cachedResultsRankText = nullptr;
 Il2CppString* cachedMaxRankText = nullptr;
 TMPro::TextMeshProUGUI* scoreDiffText = nullptr;
 TMPro::TextMeshProUGUI* rankDiffText = nullptr;
 custom_types::Helpers::Coroutine FuckYouBeatSaviorData(LevelStatsView* self);
 bool successfullySkipped = false;
 bool leaderboardFirstActivation = false;
-bool FUCKINGBEATSAVIORSUCKMYCOCK;
+bool beatSaviorDataInstalled;
 bool validResults;
 bool finishedLoading;
 int loadingStatus = 0;
@@ -135,7 +134,7 @@ custom_types::Helpers::Coroutine FuckYouBeatSaviorData(LevelStatsView* self)
     bool beatBeyondSaving = false;
     for (int i=0; i<3; i++) co_yield nullptr;
 
-    auto* beatMySavior = QuestUI::ArrayUtil::First(self->get_transform()->get_parent()->GetComponentsInChildren<Button*>(), [](Button* x) { return x->get_name() == "BeatSaviorDataDetailsButton"; });
+    auto* beatMySavior = self->get_transform()->get_parent()->GetComponentsInChildren<Button*>().FirstOrDefault([](Button* x) { return x->get_name() == "BeatSaviorDataDetailsButton"; });
     if (beatMySavior && beatMySavior->get_gameObject()->get_active()){
         beatBeyondSaving = true;
         scoreDetailsUI->openButton->GetComponent<RectTransform*>()->set_anchoredPosition({-47.0f, 10.0f});
@@ -146,9 +145,12 @@ custom_types::Helpers::Coroutine FuckYouBeatSaviorData(LevelStatsView* self)
         scoreDetailsUI->modal->Hide(false, nullptr);
         co_yield reinterpret_cast<System::Collections::IEnumerator*>(WaitForSeconds::New_ctor(0.4f));
     }
-    if (self->get_isActiveAndEnabled() && scoreDetailsUI->hasValidScoreData && GET_VALUE(alwaysOpen) && GET_VALUE(enablePopup)) scoreDetailsUI->modal->Show(true, true, EasyDelegate::MakeDelegate<System::Action*>([](){
+    if (self->get_isActiveAndEnabled() && scoreDetailsUI->hasValidScoreData && GET_VALUE(alwaysOpen) && GET_VALUE(enablePopup) && !scoreDetailsUI->modal->isShown) {
+        scoreDetailsUI->updateInfo("lodaing...");
+        scoreDetailsUI->modal->Show(true, true, EasyDelegate::MakeDelegate<System::Action*>([](){
             scoreDetailsUI->updateInfo(finishedLoading ? "" : "loading...");
         }));
+    }
     leaderboardFirstActivation = false;
     co_return;
 }
@@ -157,10 +159,13 @@ void toggleModalVisibility(bool value, LevelStatsView* self){
     scoreDetailsUI->openButton->get_gameObject()->SetActive(value);
     scoreDetailsUI->hasValidScoreData = value;
     if (!value) return scoreDetailsUI->modal->Hide(true, nullptr);
-    if (FUCKINGBEATSAVIORSUCKMYCOCK) SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(FuckYouBeatSaviorData(self)));
-    else if (self->get_isActiveAndEnabled() && GET_VALUE(alwaysOpen) && !scoreDetailsUI->modal->isShown) scoreDetailsUI->modal->Show(true, true, EasyDelegate::MakeDelegate<System::Action*>([](){
+    if (beatSaviorDataInstalled) SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(FuckYouBeatSaviorData(self)));
+    else if (self->get_isActiveAndEnabled() && GET_VALUE(alwaysOpen) && !scoreDetailsUI->modal->isShown) {
+        scoreDetailsUI->updateInfo("lodaing...");
+        scoreDetailsUI->modal->Show(true, true, EasyDelegate::MakeDelegate<System::Action*>([](){
             scoreDetailsUI->updateInfo(finishedLoading ? "" : "loading...");
         }));
+    }
 }
 
 void createDifferenceTexts(ResultsViewController* self){
@@ -173,26 +178,26 @@ void createDifferenceTexts(ResultsViewController* self){
     scoreDiffText->set_enableWordWrapping(false);
 }
 
+void cacheTextAfterLocalisation(TMPro::TextMeshProUGUI* rankTitle){
+    using namespace std::chrono_literals;
+    std::this_thread::sleep_for(400ms); // wait for localisation to apply to the text
+    cachedMaxRankText = rankTitle->get_text();
+    if (GET_VALUE(showPercentageInMenu)) rankTitle->SetText("Percentage");
+    if (beatSaviorDataInstalled) std::this_thread::sleep_for(200ms); // just to be sure that the beatsavior coroutine has passed if installed
+    leaderboardFirstActivation = false;
+}
+
 MAKE_HOOK_MATCH(Menu, &LevelStatsView::ShowStats, void, LevelStatsView* self, IDifficultyBeatmap* difficultyBeatmap, PlayerData* playerData) {
     Menu(self, difficultyBeatmap, playerData);
     finishedLoading = false;
     validResults = false;
-    if (leaderboardFirstActivation) {
-        using namespace std::chrono_literals;
-        std::thread waitForLocalisation([self](){
-            std::this_thread::sleep_for(400ms);
-            auto rankTitle = self->get_transform()->Find("MaxRank/Title")->GetComponentInChildren<TMPro::TextMeshProUGUI*>();
-            cachedMaxRankText = rankTitle->get_text();
-            rankTitle->SetText(GET_VALUE(showPercentageInMenu) ? "Percentage" : StringW(cachedMaxRankText));
-            std::this_thread::sleep_for(200ms); // just to be sure that the beatsavior coroutine has passed if installed
-            leaderboardFirstActivation = false;
-        });
-        waitForLocalisation.detach();
-    }
+    
     if (playerData != nullptr)
     {
-        if (!leaderboardFirstActivation) self->get_transform()->Find("MaxRank/Title")->GetComponentInChildren<TMPro::TextMeshProUGUI*>()->SetText(GET_VALUE(showPercentageInMenu) ? "Percentage" : StringW(cachedMaxRankText));
-        if (scoreDetailsUI == nullptr || modalSettingsChanged) ScorePercentage::initModalPopup(&scoreDetailsUI, self->get_transform());
+        auto rankTitle = self->get_transform()->Find("MaxRank/Title")->GetComponentInChildren<TMPro::TextMeshProUGUI*>();
+        if (leaderboardFirstActivation) std::thread(cacheTextAfterLocalisation, rankTitle).detach();
+        else rankTitle->SetText(GET_VALUE(showPercentageInMenu) ? "Percentage" : StringW(cachedMaxRankText));
+        if (scoreDetailsUI == nullptr || scoreDetailsUI->modalSettingsChanged) ScorePercentage::initModalPopup(&scoreDetailsUI, self->get_transform());
         scoreDetailsUI->currentMap = difficultyBeatmap;
         scoreDetailsUI->playerData = playerData;
         auto* playerLevelStatsData = playerData->GetPlayerLevelStatsData(difficultyBeatmap);
@@ -229,7 +234,7 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
     if (!validResults && !self->get_practice()) return;
     validResults = false;
     // disable score differences in party mode cuz idk how that's supposed to work (still shows rank as percentage tho) 
-    auto* flowthingy = QuestUI::ArrayUtil::First(Resources::FindObjectsOfTypeAll<PartyFreePlayFlowCoordinator*>());
+    auto* flowthingy = Resources::FindObjectsOfTypeAll<PartyFreePlayFlowCoordinator*>().FirstOrDefault();
     bool isParty = flowthingy != nullptr ? flowthingy->get_isActivated() ? true : false : false;
 
     if (firstActivation) self->continueButton->get_onClick()->AddListener(EasyDelegate::MakeDelegate<Events::UnityAction*>([](){
@@ -260,14 +265,14 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
         self->goodCutsPercentageText->set_enableWordWrapping(false);
         
         auto* rankTitleText = self->get_transform()->Find("Container/ClearedInfo/RankTitle")->GetComponentInChildren<TMPro::TextMeshProUGUI*>();
-        if (firstActivation) origRankText = rankTitleText->get_text();
+        if (firstActivation) cachedResultsRankText = rankTitleText->get_text();
         // rank text
         if (GET_VALUE(showPercentageOnResults))
         {
             rankTitleText->SetText("Percentage");
             rankText = "  " + Round(std::abs(resultPercentage), 2) + "<size=45%>%";
         }
-        else rankTitleText->SetText(origRankText);
+        else rankTitleText->SetText(cachedResultsRankText);
 
         // percentage difference text
         if (GET_VALUE(showPercentageDifference) && isValidScore){
@@ -317,14 +322,13 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
 MAKE_HOOK_FIND_CLASS_UNSAFE_INSTANCE(GameplayCoreSceneSetupData_ctor, "", "GameplayCoreSceneSetupData", ".ctor", void, GameplayCoreSceneSetupData* self, IDifficultyBeatmap* difficultyBeatmap, IPreviewBeatmapLevel* previewBeatmapLevel, GameplayModifiers* gameplayModifiers, PlayerSpecificSettings* playerSpecificSettings, PracticeSettings* practiceSettings, bool useTestNoteCutSoundEffects, EnvironmentInfoSO* environmentInfo, ColorScheme* colorScheme, MainSettingsModelSO* mainSettingsModel, BeatmapDataCache* beatmapDataCache)
 {
     GameplayCoreSceneSetupData_ctor(self, difficultyBeatmap, previewBeatmapLevel, gameplayModifiers, playerSpecificSettings, practiceSettings, useTestNoteCutSoundEffects, environmentInfo, colorScheme, mainSettingsModel, beatmapDataCache);
-    auto * playerData = QuestUI::ArrayUtil::First(Resources::FindObjectsOfTypeAll<PlayerDataModel*>())->get_playerData();
+    auto * playerData = Resources::FindObjectsOfTypeAll<PlayerDataModel*>().FirstOrDefault()->get_playerData();
     ScorePercentage::MapUtils::updateMapData(playerData, difficultyBeatmap, true);
     pauseCount = 0;
     if (scoreDetailsUI != nullptr) scoreDetailsUI->modal->Hide(true, nullptr);
     // multiplayer tomfoolery
-    hasBeenNitod = false;
     playerInfos.clear();
-    auto* modifierModel = QuestUI::ArrayUtil::First(Resources::FindObjectsOfTypeAll<GameplayModifiersModelSO*>());
+    auto* modifierModel = Resources::FindObjectsOfTypeAll<GameplayModifiersModelSO*>().FirstOrDefault();
     modifierMultiplier = modifierModel->GetTotalMultiplier(modifierModel->CreateModifierParamsList(gameplayModifiers), 10);
 }
 
@@ -332,9 +336,8 @@ MAKE_HOOK_MATCH(PPTime, &MainMenuViewController::DidActivate, void, MainMenuView
     PPTime(self, firstActivation, addedToHierarchy, screenSystemEnabling);
     if (firstActivation){
 
-        FUCKINGBEATSAVIORSUCKMYCOCK = Modloader::requireMod("BeatSaviorData");
-        // noodling = Modloader::requireMod("CustomJSONData");
-        // therealnoods = Modloader::requireMod("NoodleExtensions");
+        beatSaviorDataInstalled = Modloader::requireMod("BeatSaviorData");
+
         PPCalculator::PP::Initialize();
         leaderboardFirstActivation = true;
 
@@ -343,9 +346,10 @@ MAKE_HOOK_MATCH(PPTime, &MainMenuViewController::DidActivate, void, MainMenuView
         auto* lb = UnityEngine::Resources::FindObjectsOfTypeAll<PlatformLeaderboardViewController*>().FirstOrDefault();
 
         lb->add_didActivateEvent(EasyDelegate::MakeDelegate<ActivateDeleg*>([lb](bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling){
-            if (FUCKINGBEATSAVIORSUCKMYCOCK) SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(FuckYouBeatSaviorData(lb->get_transform()->GetComponentInChildren<LevelStatsView*>())));
+            if (beatSaviorDataInstalled) SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(FuckYouBeatSaviorData(lb->get_transform()->GetComponentInChildren<LevelStatsView*>())));
             else if (scoreDetailsUI != nullptr && scoreDetailsUI->hasValidScoreData && GET_VALUE(alwaysOpen) && GET_VALUE(enablePopup)){
                 if (scoreDetailsUI->modal->isShown) scoreDetailsUI->modal->Hide(false, nullptr);
+                scoreDetailsUI->updateInfo("lodaing...");
                 scoreDetailsUI->modal->Show(false, true, EasyDelegate::MakeDelegate<System::Action*>([](){
                     scoreDetailsUI->updateInfo(finishedLoading ? "" : "loading...");
                 }));
