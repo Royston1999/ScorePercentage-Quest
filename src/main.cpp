@@ -91,6 +91,7 @@ int pauseCount = 0;
 bool modalSettingsChanged = false;
 BeatMapData mapData;
 Il2CppString* origRankText = nullptr;
+Il2CppString* cachedMaxRankText = nullptr;
 TMPro::TextMeshProUGUI* scoreDiffText = nullptr;
 TMPro::TextMeshProUGUI* rankDiffText = nullptr;
 custom_types::Helpers::Coroutine FuckYouBeatSaviorData(LevelStatsView* self);
@@ -141,11 +142,11 @@ custom_types::Helpers::Coroutine FuckYouBeatSaviorData(LevelStatsView* self)
     }
 
     if (!beatBeyondSaving) scoreDetailsUI->openButton->GetComponent<RectTransform*>()->set_anchoredPosition({-47.0f, 0.0f});
-    if (scoreDetailsUI != nullptr && scorePercentageConfig.alwaysOpen && leaderboardFirstActivation){
+    if (scoreDetailsUI != nullptr && GET_VALUE(alwaysOpen) && leaderboardFirstActivation){
         scoreDetailsUI->modal->Hide(false, nullptr);
         co_yield reinterpret_cast<System::Collections::IEnumerator*>(WaitForSeconds::New_ctor(0.4f));
     }
-    if (self->get_isActiveAndEnabled() && scoreDetailsUI->hasValidScoreData && scorePercentageConfig.alwaysOpen && scorePercentageConfig.MenuHighScore) scoreDetailsUI->modal->Show(true, true, EasyDelegate::MakeDelegate<System::Action*>([](){
+    if (self->get_isActiveAndEnabled() && scoreDetailsUI->hasValidScoreData && GET_VALUE(alwaysOpen) && GET_VALUE(enablePopup)) scoreDetailsUI->modal->Show(true, true, EasyDelegate::MakeDelegate<System::Action*>([](){
             scoreDetailsUI->updateInfo(finishedLoading ? "" : "loading...");
         }));
     leaderboardFirstActivation = false;
@@ -157,7 +158,7 @@ void toggleModalVisibility(bool value, LevelStatsView* self){
     scoreDetailsUI->hasValidScoreData = value;
     if (!value) return scoreDetailsUI->modal->Hide(true, nullptr);
     if (FUCKINGBEATSAVIORSUCKMYCOCK) SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(FuckYouBeatSaviorData(self)));
-    else if (self->get_isActiveAndEnabled() && scorePercentageConfig.alwaysOpen && !scoreDetailsUI->modal->isShown) scoreDetailsUI->modal->Show(true, true, EasyDelegate::MakeDelegate<System::Action*>([](){
+    else if (self->get_isActiveAndEnabled() && GET_VALUE(alwaysOpen) && !scoreDetailsUI->modal->isShown) scoreDetailsUI->modal->Show(true, true, EasyDelegate::MakeDelegate<System::Action*>([](){
             scoreDetailsUI->updateInfo(finishedLoading ? "" : "loading...");
         }));
 }
@@ -176,8 +177,21 @@ MAKE_HOOK_MATCH(Menu, &LevelStatsView::ShowStats, void, LevelStatsView* self, ID
     Menu(self, difficultyBeatmap, playerData);
     finishedLoading = false;
     validResults = false;
+    if (leaderboardFirstActivation) {
+        using namespace std::chrono_literals;
+        std::thread waitForLocalisation([self](){
+            std::this_thread::sleep_for(400ms);
+            auto rankTitle = self->get_transform()->Find("MaxRank/Title")->GetComponentInChildren<TMPro::TextMeshProUGUI*>();
+            cachedMaxRankText = rankTitle->get_text();
+            rankTitle->SetText(GET_VALUE(showPercentageInMenu) ? "Percentage" : StringW(cachedMaxRankText));
+            std::this_thread::sleep_for(200ms); // just to be sure that the beatsavior coroutine has passed if installed
+            leaderboardFirstActivation = false;
+        });
+        waitForLocalisation.detach();
+    }
     if (playerData != nullptr)
     {
+        if (!leaderboardFirstActivation) self->get_transform()->Find("MaxRank/Title")->GetComponentInChildren<TMPro::TextMeshProUGUI*>()->SetText(GET_VALUE(showPercentageInMenu) ? "Percentage" : StringW(cachedMaxRankText));
         if (scoreDetailsUI == nullptr || modalSettingsChanged) ScorePercentage::initModalPopup(&scoreDetailsUI, self->get_transform());
         scoreDetailsUI->currentMap = difficultyBeatmap;
         scoreDetailsUI->playerData = playerData;
@@ -185,9 +199,9 @@ MAKE_HOOK_MATCH(Menu, &LevelStatsView::ShowStats, void, LevelStatsView* self, ID
         ScorePercentage::MapUtils::updateBasicMapInfo(playerData, difficultyBeatmap);
         if (playerLevelStatsData->get_validScore()) ConfigHelper::LoadBeatMapInfo(mapData.mapID, mapData.idString);
         
-        if (playerLevelStatsData->get_validScore()) if (scorePercentageConfig.MenuHighScore && playerLevelStatsData->highScore > 0) toggleModalVisibility(true, self);
+        if (playerLevelStatsData->get_validScore()) if (GET_VALUE(enablePopup) && playerLevelStatsData->highScore > 0) toggleModalVisibility(true, self);
         
-        if (!scorePercentageConfig.MenuHighScore || !playerLevelStatsData->get_validScore() || playerLevelStatsData->highScore < 1) toggleModalVisibility(false, self);
+        if (!GET_VALUE(enablePopup) || !playerLevelStatsData->get_validScore() || playerLevelStatsData->highScore < 1) toggleModalVisibility(false, self);
         ScorePercentage::MapUtils::updateMapData(playerData, difficultyBeatmap);
     }
 }
@@ -219,7 +233,7 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
     bool isParty = flowthingy != nullptr ? flowthingy->get_isActivated() ? true : false : false;
 
     if (firstActivation) self->continueButton->get_onClick()->AddListener(EasyDelegate::MakeDelegate<Events::UnityAction*>([](){
-        if (scorePercentageConfig.alwaysOpen && scoreDetailsUI != nullptr && scoreDetailsUI->modal->isShown) scoreDetailsUI->updateInfo();
+        if (GET_VALUE(alwaysOpen) && scoreDetailsUI != nullptr && scoreDetailsUI->modal->isShown) scoreDetailsUI->updateInfo();
     }));
 
     // funny thing i wonder if anyone notices
@@ -248,7 +262,7 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
         auto* rankTitleText = self->get_transform()->Find("Container/ClearedInfo/RankTitle")->GetComponentInChildren<TMPro::TextMeshProUGUI*>();
         if (firstActivation) origRankText = rankTitleText->get_text();
         // rank text
-        if (scorePercentageConfig.LevelEndRank)
+        if (GET_VALUE(showPercentageOnResults))
         {
             rankTitleText->SetText("Percentage");
             rankText = "  " + Round(std::abs(resultPercentage), 2) + "<size=45%>%";
@@ -256,9 +270,9 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
         else rankTitleText->SetText(origRankText);
 
         // percentage difference text
-        if (scorePercentageConfig.ScorePercentageDifference && isValidScore){
+        if (GET_VALUE(showPercentageDifference) && isValidScore){
             std::string rankDiff = valueDifferenceString(resultPercentage - mapData.currentPercentage);
-            std::string sorry = scorePercentageConfig.LevelEndRank ? "" : "  ";
+            std::string sorry = GET_VALUE(showPercentageOnResults) ? "" : "  ";
             rankText = createScoreText(sorry + rankText);
             rankDiffText->get_gameObject()->SetActive(true);
             rankDiffText->SetText("<size=40%>" + rankDiff + "<size=30%>%");
@@ -267,7 +281,7 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
         self->rankText->SetText(rankText);
 
         // score difference text
-        if (scorePercentageConfig.ScoreDifference && isValidScore)
+        if (GET_VALUE(showScoreDifference) && isValidScore)
         {
             self->newHighScoreText->SetActive(false);
             std::string formatting = "<size=40%>" + ((resultScore - mapData.currentScore >= 0) ? positiveColour + "+" : negativeColour); 
@@ -281,7 +295,7 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
         }
 
         // miss difference text
-        if(scorePercentageConfig.missDifference && scorePercentageConfig.missCount != -1 && isValidScore)
+        if(GET_VALUE(showMissDifference) && scorePercentageConfig.missCount != -1 && isValidScore)
         {
             int currentMisses = scorePercentageConfig.badCutCount + scorePercentageConfig.missCount;
             int resultMisses = self->levelCompletionResults->missedCount + self->levelCompletionResults->badCutsCount;
@@ -304,7 +318,6 @@ MAKE_HOOK_FIND_CLASS_UNSAFE_INSTANCE(GameplayCoreSceneSetupData_ctor, "", "Gamep
 {
     GameplayCoreSceneSetupData_ctor(self, difficultyBeatmap, previewBeatmapLevel, gameplayModifiers, playerSpecificSettings, practiceSettings, useTestNoteCutSoundEffects, environmentInfo, colorScheme, mainSettingsModel, beatmapDataCache);
     auto * playerData = QuestUI::ArrayUtil::First(Resources::FindObjectsOfTypeAll<PlayerDataModel*>())->get_playerData();
-    auto* playerLevelStatsData = playerData->GetPlayerLevelStatsData(difficultyBeatmap);
     ScorePercentage::MapUtils::updateMapData(playerData, difficultyBeatmap, true);
     pauseCount = 0;
     if (scoreDetailsUI != nullptr) scoreDetailsUI->modal->Hide(true, nullptr);
@@ -331,7 +344,7 @@ MAKE_HOOK_MATCH(PPTime, &MainMenuViewController::DidActivate, void, MainMenuView
 
         lb->add_didActivateEvent(EasyDelegate::MakeDelegate<ActivateDeleg*>([lb](bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling){
             if (FUCKINGBEATSAVIORSUCKMYCOCK) SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(FuckYouBeatSaviorData(lb->get_transform()->GetComponentInChildren<LevelStatsView*>())));
-            else if (scoreDetailsUI != nullptr && scoreDetailsUI->hasValidScoreData && scorePercentageConfig.alwaysOpen && scorePercentageConfig.MenuHighScore){
+            else if (scoreDetailsUI != nullptr && scoreDetailsUI->hasValidScoreData && GET_VALUE(alwaysOpen) && GET_VALUE(enablePopup)){
                 if (scoreDetailsUI->modal->isShown) scoreDetailsUI->modal->Hide(false, nullptr);
                 scoreDetailsUI->modal->Show(false, true, EasyDelegate::MakeDelegate<System::Action*>([](){
                     scoreDetailsUI->updateInfo(finishedLoading ? "" : "loading...");
@@ -348,6 +361,7 @@ MAKE_HOOK_MATCH(PPTime, &MainMenuViewController::DidActivate, void, MainMenuView
 MAKE_HOOK_MATCH(MenuTransitionsHelper_RestartGame, &MenuTransitionsHelper::RestartGame, void, MenuTransitionsHelper* self, System::Action_1<Zenject::DiContainer*>* finishCallback)
 {
     scoreDetailsUI = nullptr;
+    cachedMaxRankText = nullptr;
     MenuTransitionsHelper_RestartGame(self, finishCallback);
 }
 
@@ -358,6 +372,7 @@ extern "C" void load() {
     QuestUI::Init();
     custom_types::Register::AutoRegister();
     ScoreUtils::Init();
+    getScorePercentageConfig().Init(modInfo);
     QuestUI::Register::RegisterModSettingsFlowCoordinator<ScoreDetailsUI::SettingsFlowCoordinator*>(modInfo);
     getLogger().info("Installing hooks...");
     INSTALL_HOOK(getLogger(), Menu);
@@ -380,7 +395,10 @@ extern "C" void load() {
         if (finishedLoading) return;
         finishedLoading = true;
         QuestUI::MainThreadScheduler::Schedule([](){
-            if (scoreDetailsUI != nullptr) scoreDetailsUI->updateInfo();
+            if (scoreDetailsUI != nullptr) {
+                scoreDetailsUI->updateInfo();
+                if (mapData.currentPercentage > 0 && GET_VALUE(showPercentageInMenu))scoreDetailsUI->modal->get_transform()->get_parent()->GetComponentInChildren<LevelStatsView*>()->maxRankText->SetText(Round(std::abs(mapData.currentPercentage), 2) + "%");
+            }
         });
     };
 }

@@ -4,43 +4,54 @@
 #include "beatsaber-hook/shared/config/config-utils.hpp"
 #include <string>
 #include <iostream>
+#include "config-utils/shared/config-utils.hpp"
 
-#define GET(obj, fieldName, method, required) auto itr = obj.FindMember(fieldName.data()); \
-if (itr == obj.MemberEnd()) { \
-    if (required) { \
-    } \
-    return std::nullopt; \
-} \
-return itr->value.method()
+DECLARE_CONFIG(ScorePercentageConfig,
+    CONFIG_VALUE(version, std::string, "version", "3.0.0");
+    CONFIG_VALUE(showPercentageOnResults, bool, "Display Rank as Percentage", true);
+    CONFIG_VALUE(showPercentageInMenu, bool, "Show Percentage in Main Menu", true);
+    CONFIG_VALUE(showMissDifference, bool, "Show Miss Difference", true);
+    CONFIG_VALUE(showPercentageDifference, bool, "Show Percentage Difference", true);
+    CONFIG_VALUE(showScoreDifference, bool, "Show Score Difference", true);
+    CONFIG_VALUE(enablePopup, bool, "Enable Score Details Popup", true);
+    CONFIG_VALUE(uiPP, bool, "uiPP", true);
+    CONFIG_VALUE(uiPlayCount, bool, "uiPlayCount", true);
+    CONFIG_VALUE(uiMissCount, bool, "uiMissCount", true);
+    CONFIG_VALUE(uiBadCutCount, bool, "uiBadCutCount", true);
+    CONFIG_VALUE(uiPauseCount, bool, "uiPauseCount", true);
+    CONFIG_VALUE(uiDatePlayed, bool, "uiDatePlayed", true);
+    CONFIG_VALUE(alwaysOpen, bool, "alwaysOpen", false);
+    CONFIG_VALUE(multiShowPercentageOnResults, bool, "Display Percentage on Results", true);
+    CONFIG_VALUE(multiLivePercentages, bool, "Display Percentages in Level", true);
+    CONFIG_VALUE(multiPercentageDifference, bool, "Display Percentage Difference in Level", true);
+)
 
-
-std::optional<bool> getBool(rapidjson::Value& obj, std::string_view fieldName, bool required = false);
-std::optional<bool> setBool(rapidjson::Value& obj, std::string_view fieldName,  bool value, bool required = false);
+#define GET_VALUE(name) getScorePercentageConfig().name.GetValue()
 
 class ScorePercentageConfig {
 public:
     ConfigDocument beatMapData;
 
-    // solo
-    bool MenuHighScore;
-    bool LevelEndRank;
-    bool missDifference;
-    bool ScoreDifference;
-    bool ScorePercentageDifference;
+    // // solo
+    // bool MenuHighScore;
+    // bool LevelEndRank;
+    // bool missDifference;
+    // bool ScoreDifference;
+    // bool ScorePercentageDifference;
 
-    // popup
-    bool uiPP;
-    bool uiPlayCount;
-    bool uiMissCount;
-    bool uiBadCutCount;
-    bool uiPauseCount;
-    bool uiDatePlayed;
-    bool alwaysOpen;
+    // // popup
+    // bool uiPP;
+    // bool uiPlayCount;
+    // bool uiMissCount;
+    // bool uiBadCutCount;
+    // bool uiPauseCount;
+    // bool uiDatePlayed;
+    // bool alwaysOpen;
 
-    // multi
-    bool multiLevelEndRank;
-    bool multiLivePercentages;
-    bool multiPercentageDifference;
+    // // multi
+    // bool multiLevelEndRank;
+    // bool multiLivePercentages;
+    // bool multiPercentageDifference;
 
     int missCount;
     int badCutCount;

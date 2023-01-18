@@ -3,37 +3,20 @@
 
 DEFINE_TYPE(ScoreDetailsUI::Views, SettingsViewController);
 
-void ScoreDetailsUI::Views::SettingsViewController::DidActivate(
-    bool firstActivation,
-    bool addedToHierarchy,
-    bool screenSystemEnabling
-) {
-    using namespace GlobalNamespace;
-    using namespace UnityEngine;
+void ScoreDetailsUI::Views::SettingsViewController::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
     using namespace QuestUI::BeatSaberUI;
-    using namespace UnityEngine::UI;
-
     if (firstActivation) {
-        VerticalLayoutGroup* container = CreateVerticalLayoutGroup(get_rectTransform());
+        auto container = CreateVerticalLayoutGroup(get_rectTransform());
 
-        AddHoverHint(CreateToggle(container->get_transform(), "Display Rank as Percentage", scorePercentageConfig.LevelEndRank, 
-        [](bool value) {
-            setBool(getConfig().config, "Level End Rank Display", value, false);
-        } )->get_gameObject(), "displays your rank as a percentage on the results screen");
-        
-        AddHoverHint(CreateToggle(container->get_transform(), "Display Percentage Difference", scorePercentageConfig.ScorePercentageDifference, 
-        [](bool value) {
-            setBool(getConfig().config, "Score Percentage Difference", value, false);
-        } )->get_gameObject(), "displays the score difference as a percentage compared to your previous high score");
-
-        AddHoverHint(CreateToggle(container->get_transform(), "Display Score Difference", scorePercentageConfig.ScoreDifference, 
-        [](bool value) {
-            setBool(getConfig().config, "Score Difference", value, false);
-        } )->get_gameObject(), "displays the score difference compared to your previous high score");
-
-        AddHoverHint(CreateToggle(container->get_transform(), "Display Miss Difference", scorePercentageConfig.missDifference, 
-        [](bool value) {
-            setBool(getConfig().config, "Average Cut Score", value, false);
-        } )->get_gameObject(), "displays the miss difference copared to your previous high score");
+        auto showPerc = AddConfigValueToggle(container->get_transform(), getScorePercentageConfig().showPercentageOnResults);
+        AddHoverHint(showPerc->get_gameObject(), "displays your rank as a percentage on the results screen");
+        auto percDiff = AddConfigValueToggle(container->get_transform(), getScorePercentageConfig().showPercentageDifference);
+        AddHoverHint(percDiff->get_gameObject(), "displays the score difference as a percentage compared to your previous high score");
+        auto scoreDiff = AddConfigValueToggle(container->get_transform(), getScorePercentageConfig().showScoreDifference);
+        AddHoverHint(scoreDiff->get_gameObject(), "displays the score difference compared to your previous high score");
+        auto missDiff = AddConfigValueToggle(container->get_transform(), getScorePercentageConfig().showMissDifference);
+        AddHoverHint(missDiff->get_gameObject(), "displays the miss difference compared to your previous high score");
+        auto percMenu = AddConfigValueToggle(container->get_transform(), getScorePercentageConfig().showPercentageInMenu);
+        AddHoverHint(percMenu->get_gameObject(), "displays your rank as a percentage in the stats view below the leaderboard");
     }
 }

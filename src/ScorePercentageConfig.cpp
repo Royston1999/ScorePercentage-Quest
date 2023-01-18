@@ -3,22 +3,6 @@
 
 using namespace rapidjson;
 
-std::optional<bool> getBool(Value& obj, std::string_view fieldName, bool required) {
-    GET(obj, fieldName, GetBool, required);
-}
-
-std::optional<bool> setBool(Value& obj, std::string_view fieldName, bool value, bool required) {
-    auto itr = obj.FindMember(fieldName.data());
-    if (itr == obj.MemberEnd()) {
-        if (required) {
-        }
-    }
-    itr->value.SetBool(value);
-    getConfig().Write();
-    ConfigHelper::LoadConfig(scorePercentageConfig, getConfig().config);
-    return true;
-}
-
 void ConfigHelper::AddBeatMap(MemoryPoolAllocator<>& allocator, Value& obj, std::string mapID, std::string diff, int missCount, int badCutCount, int pauseCount, std::string datePlayed) {
     Value v(kObjectType);
 
@@ -92,28 +76,14 @@ void ConfigHelper::LoadBeatMapInfo(std::string mapID, std::string diff){
 
 bool ConfigHelper::LoadConfig(ScorePercentageConfig& con, ConfigDocument& config) {
     ConfigHelper::LoadBeatMapDataFile();
-    con.MenuHighScore = getBool(config, "Menu Highscore Percentage").value_or(false);
-    con.LevelEndRank = getBool(config, "Level End Rank Display").value_or(false);
-    con.missDifference = getBool(config, "Average Cut Score").value_or(false);
-    con.ScoreDifference = getBool(config, "Score Difference").value_or(false);
-    con.ScorePercentageDifference = getBool(config, "Score Percentage Difference").value_or(false);
-    con.uiPP = getBool(config, "uiPP").value_or(false);
-    con.uiPlayCount = getBool(config, "uiPlayCount").value_or(false);
-    con.uiMissCount = getBool(config, "uiMissCount").value_or(false);
-    con.uiBadCutCount = getBool(config, "uiBadCutCount").value_or(false);
-    con.uiPauseCount = getBool(config, "uiPauseCount").value_or(false);
-    con.uiDatePlayed = getBool(config, "uiDatePlayed").value_or(false);
-    con.alwaysOpen = getBool(config, "alwaysOpen").value_or(false);
-    con.multiLevelEndRank = getBool(config, "multiLevelEndRank").value_or(false);
-    con.multiLivePercentages = getBool(config, "multiLivePercentages").value_or(false);
-    con.multiPercentageDifference = getBool(config, "multiPercentageDifference").value_or(false);
+    if (config.HasMember("version") && std::string(config.FindMember("version")->value.GetString()) <= "2.0.0"){
+        config.SetObject();
+        config.RemoveAllMembers();
+    }
     con.missCount = -1;
     con.badCutCount = -1;
     con.pauseCount = -1;
     con.datePlayed = "";
-    if (!config.HasMember("version")) ConfigHelper::UpdateOldConfig(config);
-    else if (std::string(config.FindMember("version")->value.GetString()) != "2.0.0") ConfigHelper::UpdateOldConfig(config);
-    else if (!config.HasMember("Menu Highscore Percentage")) ConfigHelper::CreateDefaultConfig(config);
     return true;
 }
 
@@ -144,63 +114,31 @@ void ConfigHelper::CreateDefaultConfig(ConfigDocument& config){
     ConfigHelper::LoadConfig(scorePercentageConfig, config);
 }
 
-void ConfigHelper::UpdateOldConfig(ConfigDocument& config){
-    config.SetObject();
-    config.RemoveAllMembers();
-    config.AddMember("version", "2.0.0", config.GetAllocator());
-    config.AddMember("Menu Highscore Percentage", scorePercentageConfig.MenuHighScore, config.GetAllocator());
-    config.AddMember("Level End Rank Display", scorePercentageConfig.LevelEndRank, config.GetAllocator());
-    getConfig().Write();
-    config.AddMember("Average Cut Score", scorePercentageConfig.missDifference, config.GetAllocator());
-    config.AddMember("Score Difference", scorePercentageConfig.ScoreDifference, config.GetAllocator());
-    config.AddMember("Score Percentage Difference", scorePercentageConfig.ScorePercentageDifference, config.GetAllocator());
-    getConfig().Write();
-    config.AddMember("uiPP", scorePercentageConfig.uiPP, config.GetAllocator());
-    config.AddMember("uiPlayCount", scorePercentageConfig.uiPlayCount, config.GetAllocator());
-    config.AddMember("uiMissCount", scorePercentageConfig.uiMissCount, config.GetAllocator());
-    config.AddMember("uiBadCutCount", scorePercentageConfig.uiBadCutCount, config.GetAllocator());
-    getConfig().Write();
-    config.AddMember("uiPauseCount", scorePercentageConfig.uiPauseCount, config.GetAllocator());
-    config.AddMember("uiDatePlayed", scorePercentageConfig.uiDatePlayed, config.GetAllocator());
-    config.AddMember("alwaysOpen", scorePercentageConfig.alwaysOpen, config.GetAllocator());
-    getConfig().Write();
-    config.AddMember("multiLevelEndRank", true, config.GetAllocator());
-    config.AddMember("multiLivePercentages", true, config.GetAllocator());
-    config.AddMember("multiPercentageDifference", false, config.GetAllocator());
-    getConfig().Write();
-    ConfigHelper::LoadConfig(scorePercentageConfig, config);
-}
-
 // void ConfigHelper::UpdateOldConfig(ConfigDocument& config){
-//     MemoryPoolAllocator<>& allocator = scorePercentageConfig.beatMapData.GetAllocator();
-//     auto locateMaps = config.FindMember("beatMaps");
-//     auto arr = locateMaps->value.GetArray();
-//     auto size = arr.Size();
-//     for (int i = 0; i < size; i++) {
-//         std::string mapID = arr[i].FindMember("mapID")->value.GetString();
-//         auto itr = arr[i].FindMember("difficulties");
-//         auto arr2 = itr->value.GetArray();
-//         auto size2 = arr2.Size();
-
-//         Value v(kObjectType);
-//         char buffer[60]; int len = sprintf(buffer, "%s", mapID.c_str());
-//         Document::ValueType string(kStringType);
-//         string.SetString(buffer, len, allocator);
-
-//         for (int i2 = 0; i2 < size2; i2++) {
-//             std::string diff = arr2[i2].FindMember("diffType")->value.GetString();
-
-//             char diffType[20]; int len2 = sprintf(diffType, "%s", diff.c_str());
-//             Document::ValueType string2(kStringType);
-//             string2.SetString(diffType, len2, allocator);
-//             arr2[i2].EraseMember("diffType");
-//             v.AddMember(string2, arr2[i2], allocator);
-//         }
-//         scorePercentageConfig.beatMapData.AddMember(string, v, allocator);
-//     }
-//     WriteFile();
-//     config.EraseMember("beatMaps");
+//     config.SetObject();
+//     config.RemoveAllMembers();
+//     config.AddMember("version", "2.0.0", config.GetAllocator());
+//     config.AddMember("Menu Highscore Percentage", scorePercentageConfig.MenuHighScore, config.GetAllocator());
+//     config.AddMember("Level End Rank Display", scorePercentageConfig.LevelEndRank, config.GetAllocator());
 //     getConfig().Write();
+//     config.AddMember("Average Cut Score", scorePercentageConfig.missDifference, config.GetAllocator());
+//     config.AddMember("Score Difference", scorePercentageConfig.ScoreDifference, config.GetAllocator());
+//     config.AddMember("Score Percentage Difference", scorePercentageConfig.ScorePercentageDifference, config.GetAllocator());
+//     getConfig().Write();
+//     config.AddMember("uiPP", scorePercentageConfig.uiPP, config.GetAllocator());
+//     config.AddMember("uiPlayCount", scorePercentageConfig.uiPlayCount, config.GetAllocator());
+//     config.AddMember("uiMissCount", scorePercentageConfig.uiMissCount, config.GetAllocator());
+//     config.AddMember("uiBadCutCount", scorePercentageConfig.uiBadCutCount, config.GetAllocator());
+//     getConfig().Write();
+//     config.AddMember("uiPauseCount", scorePercentageConfig.uiPauseCount, config.GetAllocator());
+//     config.AddMember("uiDatePlayed", scorePercentageConfig.uiDatePlayed, config.GetAllocator());
+//     config.AddMember("alwaysOpen", scorePercentageConfig.alwaysOpen, config.GetAllocator());
+//     getConfig().Write();
+//     config.AddMember("multiLevelEndRank", true, config.GetAllocator());
+//     config.AddMember("multiLivePercentages", true, config.GetAllocator());
+//     config.AddMember("multiPercentageDifference", false, config.GetAllocator());
+//     getConfig().Write();
+//     ConfigHelper::LoadConfig(scorePercentageConfig, config);
 // }
 
 void ConfigHelper::LoadBeatMapDataFile(){

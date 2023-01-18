@@ -13,6 +13,7 @@
 #include "GlobalNamespace/BeatmapDataTransformHelper.hpp"
 #include "GlobalNamespace/IBeatmapLevel.hpp"
 #include "GlobalNamespace/IDifficultyBeatmapSet.hpp"
+#include "GlobalNamespace/LevelStatsView.hpp"
 
 #include "scoreutils/shared/ScoreUtils.hpp"
 
@@ -29,7 +30,10 @@ namespace ScorePercentage::MapUtils{
             finishedLoading = true;
             float currentPercentage = ScorePercentage::Utils::CalculatePercentage(maxScore, mapData.currentScore);
             mapData.currentPercentage = currentPercentage; mapData.maxScore = maxScore;
-            if (scoreDetailsUI != nullptr) scoreDetailsUI->updateInfo();
+            if (scoreDetailsUI != nullptr) {
+                scoreDetailsUI->updateInfo();
+                if (mapData.currentPercentage > 0) scoreDetailsUI->modal->get_transform()->get_parent()->GetComponentInChildren<LevelStatsView*>()->maxRankText->SetText(GET_VALUE(showPercentageInMenu) ? StringW(ScorePercentage::Utils::Round(std::abs(mapData.currentPercentage), 2) + "%") : RankModel::GetRankName(playerData->GetPlayerLevelStatsData(difficultyBeatmap)->maxRank));                
+            }
         }
     }
 

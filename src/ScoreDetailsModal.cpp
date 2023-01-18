@@ -19,14 +19,14 @@ using namespace ScorePercentage::Utils;
 
 void ScorePercentage::initModalPopup(ScorePercentage::ModalPopup** modalUIPointer, Transform* parent){
     auto modalUI = *modalUIPointer;
-    int uiText = scorePercentageConfig.uiPlayCount + scorePercentageConfig.uiMissCount + scorePercentageConfig.uiBadCutCount + scorePercentageConfig.uiPauseCount + scorePercentageConfig.uiDatePlayed;
+    int uiText = GET_VALUE(uiPlayCount) + GET_VALUE(uiMissCount) + GET_VALUE(uiBadCutCount) + GET_VALUE(uiPauseCount) + GET_VALUE(uiDatePlayed);
     if (modalUI != nullptr){
         UnityEngine::GameObject::Destroy(modalUI->modal->get_gameObject());
         UnityEngine::GameObject::Destroy(modalUI->openButton->get_gameObject());
     }
     int x = 25 + (6 * uiText);
     if (modalUI == nullptr) modalUI = (ScorePercentage::ModalPopup*) malloc(sizeof(ScorePercentage::ModalPopup));
-    modalUI->modal = CreateModal(parent, UnityEngine::Vector2(60, x), [](HMUI::ModalView *modal) {}, !scorePercentageConfig.alwaysOpen);
+    modalUI->modal = CreateModal(parent, UnityEngine::Vector2(60, x), [](HMUI::ModalView *modal) {}, !GET_VALUE(alwaysOpen));
     modalSettingsChanged = false;
     
     modalUI->list = CreateVerticalLayoutGroup(modalUI->modal->get_transform());
@@ -39,11 +39,11 @@ void ScorePercentage::initModalPopup(ScorePercentage::ModalPopup** modalUIPointe
     modalUI->title = CreateText(modalUI->modal->get_transform(), "<size=150%>SCORE DETAILS</size>", UnityEngine::Vector2(14, y));
     modalUI->score = CreateText(modalUI->list->get_transform(), "", false);
     modalUI->maxCombo = CreateText(modalUI->list->get_transform(), "", false);
-    if (scorePercentageConfig.uiPlayCount) modalUI->playCount = CreateText(modalUI->list->get_transform(), "", false);
-    if (scorePercentageConfig.uiMissCount) modalUI->missCount = CreateText(modalUI->list->get_transform(), "", false);
-    if (scorePercentageConfig.uiBadCutCount) modalUI->badCutCount = CreateText(modalUI->list->get_transform(), "", false);
-    if (scorePercentageConfig.uiPauseCount) modalUI->pauseCountGUI = CreateText(modalUI->list->get_transform(), "", false);
-    if (scorePercentageConfig.uiDatePlayed) modalUI->datePlayed = CreateText(modalUI->list->get_transform(), "", false);
+    if (GET_VALUE(uiPlayCount)) modalUI->playCount = CreateText(modalUI->list->get_transform(), "", false);
+    if (GET_VALUE(uiMissCount)) modalUI->missCount = CreateText(modalUI->list->get_transform(), "", false);
+    if (GET_VALUE(uiBadCutCount)) modalUI->badCutCount = CreateText(modalUI->list->get_transform(), "", false);
+    if (GET_VALUE(uiPauseCount)) modalUI->pauseCountGUI = CreateText(modalUI->list->get_transform(), "", false);
+    if (GET_VALUE(uiDatePlayed)) modalUI->datePlayed = CreateText(modalUI->list->get_transform(), "", false);
 
     modalUI->loadingCircle = Object::Instantiate(
         Resources::FindObjectsOfTypeAll<HMUI::ImageView*>().FirstOrDefault([](auto x){ 
@@ -110,7 +110,7 @@ void ScorePercentage::ModalPopup::updateInfo(std::string text){
     bool isStandardLevel = mapData.mapType.compare("Standard") == 0;
     float maxPP = isStandardLevel ? PPCalculator::PP::BeatmapMaxPP(mapData.mapID, mapData.diff) : -1;
     float truePP = maxPP != -1 ? PPCalculator::PP::CalculatePP(maxPP, currentDifficultyPercentageScore/100) : -1.0f;
-    bool isValidPP = truePP != -1 && scorePercentageConfig.uiPP;
+    bool isValidPP = truePP != -1 && GET_VALUE(uiPP);
 
     std::string highScoreText = ScoreFormatter::Format(mapData.currentScore);
 
@@ -124,18 +124,18 @@ void ScorePercentage::ModalPopup::updateInfo(std::string text){
     
     score->SetText(scoreText);
     maxCombo->SetText(maxComboText);
-    if (scorePercentageConfig.uiPlayCount) playCount->SetText(playCountText);
-    if (scorePercentageConfig.uiMissCount) missCount->SetText(missCountText);
-    if (scorePercentageConfig.uiBadCutCount) badCutCount->SetText(badCutCountText);
-    if (scorePercentageConfig.uiPauseCount) pauseCountGUI->SetText(pauseCountText);
-    if (scorePercentageConfig.uiDatePlayed) datePlayed->SetText(datePlayedText);
+    if (GET_VALUE(uiPlayCount)) playCount->SetText(playCountText);
+    if (GET_VALUE(uiMissCount)) missCount->SetText(missCountText);
+    if (GET_VALUE(uiBadCutCount)) badCutCount->SetText(badCutCountText);
+    if (GET_VALUE(uiPauseCount)) pauseCountGUI->SetText(pauseCountText);
+    if (GET_VALUE(uiDatePlayed)) datePlayed->SetText(datePlayedText);
 }
 void ScorePercentage::ModalPopup::setDisplayTexts(std::string text){
     score->SetText(text);
     maxCombo->SetText(text);
-    if (scorePercentageConfig.uiPlayCount) playCount->SetText(text);
-    if (scorePercentageConfig.uiMissCount) missCount->SetText(text);
-    if (scorePercentageConfig.uiBadCutCount) badCutCount->SetText(text);
-    if (scorePercentageConfig.uiPauseCount) pauseCountGUI->SetText(text);
-    if (scorePercentageConfig.uiDatePlayed) datePlayed->SetText(text);
+    if (GET_VALUE(uiPlayCount)) playCount->SetText(text);
+    if (GET_VALUE(uiMissCount)) missCount->SetText(text);
+    if (GET_VALUE(uiBadCutCount)) badCutCount->SetText(text);
+    if (GET_VALUE(uiPauseCount)) pauseCountGUI->SetText(text);
+    if (GET_VALUE(uiDatePlayed)) datePlayed->SetText(text);
 }

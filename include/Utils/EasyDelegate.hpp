@@ -27,14 +27,21 @@ namespace EasyDelegate{
     }
 }
 
-// Takes the delegate type and the lambda callback and then constructs the delegate  
-#define MAKEDELEG(delegType, func) custom_types::MakeDelegate<delegType>(EasyDelegate::lambda_to_func(func))
-
 namespace EasyDelegate{
     /**
      * @param F the lambda callback to be used with the delegate.
      * @return delegate of type T
      */
     template <typename T, class F>
-    T MakeDelegate(F f){ return MAKEDELEG(T, f); }
+    T MakeDelegate(F f){ 
+        return custom_types::MakeDelegate<T>(EasyDelegate::lambda_to_func(f));
+    }
+
+    template<typename TRet, typename ...TArgs>
+    using func_ptr = TRet(*)(TArgs...);
+
+    template <typename T, typename ReturnType, typename... Args>
+    T MakeDelegate(func_ptr<ReturnType, Args...> func){
+        return custom_types::MakeDelegate<T>(static_cast<std::function<ReturnType(Args...)>>(func));
+    }
 }

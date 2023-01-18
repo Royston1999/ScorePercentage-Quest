@@ -39,69 +39,69 @@ void ScoreDetailsUI::Views::ScoreDetailsUIViewController::DidActivate(bool first
     if (firstActivation) {
         scoreDetailsContainer = QuestUI::BeatSaberUI::CreateVerticalLayoutGroup(get_transform());
         UIUtils::AddHeader(get_transform(), "Score Details UI Settings", UnityEngine::Color(0.941f, 0.188f, 0.188f, 1.0f));
-        AddHoverHint(CreateToggle(scoreDetailsContainer->get_transform(), "Toggle Advanced Score Details", scorePercentageConfig.MenuHighScore, 
+        AddHoverHint(CreateToggle(scoreDetailsContainer->get_transform(), "Toggle Advanced Score Details", GET_VALUE(enablePopup), 
         [](bool value) {    
-            setBool(getConfig().config, "Menu Highscore Percentage", value, false);
+            getScorePercentageConfig().enablePopup.SetValue(value);
             toggleToggles(value);
         } )->get_gameObject(), "replaces the score bar in the menu with a useless popup UI");
 
-        ppToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display PP", scorePercentageConfig.uiPP, 
+        ppToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display PP", GET_VALUE(uiPP), 
             [](bool value) {
-                setBool(getConfig().config, "uiPP", value, false);
+                getScorePercentageConfig().uiPP.SetValue(value);
                 modalSettingsChanged = true;
             });
         
         AddHoverHint(ppToggle->get_gameObject(), "Displays amount of pp given by the score if the map is ranked (playing with positive modifiers will make this value innacurate)");
 
-        playCountToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display Play Count", scorePercentageConfig.uiPlayCount, 
+        playCountToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display Play Count", GET_VALUE(uiPlayCount), 
             [](bool value) {
-                setBool(getConfig().config, "uiPlayCount", value, false);
+                getScorePercentageConfig().uiPlayCount.SetValue(value);
                 modalSettingsChanged = true;
             });
 
         AddHoverHint(playCountToggle->get_gameObject(), "Displays number of times the map has been played");    
 
-        missCountToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display Miss Count", scorePercentageConfig.uiMissCount, 
+        missCountToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display Miss Count", GET_VALUE(uiMissCount), 
             [](bool value) {
-                setBool(getConfig().config, "uiMissCount", value, false);
+                getScorePercentageConfig().uiMissCount.SetValue(value);
                 modalSettingsChanged = true;
             });
 
         AddHoverHint(missCountToggle->get_gameObject(), "Displays number of misses");
 
-        badCutCountToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display Bad Cut Count", scorePercentageConfig.uiBadCutCount, 
+        badCutCountToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display Bad Cut Count", GET_VALUE(uiBadCutCount), 
             [](bool value) {
-                setBool(getConfig().config, "uiBadCutCount", value, false);
+                getScorePercentageConfig().uiBadCutCount.SetValue(value);
                 modalSettingsChanged = true;
             });
 
         AddHoverHint(badCutCountToggle->get_gameObject(), "Displays number of bad cuts");
 
-        pauseCountToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display Pause Count", scorePercentageConfig.uiPauseCount, 
+        pauseCountToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display Pause Count", GET_VALUE(uiPauseCount), 
             [](bool value) {
-                setBool(getConfig().config, "uiPauseCount", value, false);
+                getScorePercentageConfig().uiPauseCount.SetValue(value);
                 modalSettingsChanged = true;
             });
 
         AddHoverHint(pauseCountToggle->get_gameObject(), "Displays number of times the game was paused during the level");
 
-        datePlayedToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display Date Played", scorePercentageConfig.uiDatePlayed, 
+        datePlayedToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display Date Played", GET_VALUE(uiDatePlayed), 
             [](bool value) {
-                setBool(getConfig().config, "uiDatePlayed", value, false);
+                getScorePercentageConfig().uiDatePlayed.SetValue(value);
                 modalSettingsChanged = true;
             });
 
         AddHoverHint(datePlayedToggle->get_gameObject(), "Displays the date on which the most recent score was set");
 
-        alwaysOnToggle = CreateToggle(scoreDetailsContainer->get_transform(), "UI always open", scorePercentageConfig.alwaysOpen, 
+        alwaysOnToggle = CreateToggle(scoreDetailsContainer->get_transform(), "UI always open", GET_VALUE(alwaysOpen), 
             [](bool value) {
-                setBool(getConfig().config, "alwaysOpen", value, false);
+                getScorePercentageConfig().alwaysOpen.SetValue(value);
                 modalSettingsChanged = true;
             });
 
         AddHoverHint(alwaysOnToggle->get_gameObject(), "UI Popup is always popped up");
 
         // if (FUCKINGBEATSAVIORSUCKMYCOCK) alwaysOnToggle->get_transform()->get_parent()->get_gameObject()->SetActive(false);
-        if (!scorePercentageConfig.MenuHighScore) toggleToggles(false);
+        if (!GET_VALUE(enablePopup)) toggleToggles(false);
     }
 }

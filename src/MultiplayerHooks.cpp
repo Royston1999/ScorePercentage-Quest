@@ -93,7 +93,7 @@ void toggleMultiResultsTableFormat(bool value, ResultsTableCell* cell){
 MAKE_HOOK_MATCH(Results_SetData, &ResultsTableCell::SetData, void, ResultsTableCell* self, int order, IConnectedPlayer* connectedPlayer, LevelCompletionResults* levelCompletionResults){
     Results_SetData(self, order, connectedPlayer, levelCompletionResults);
     bool passedLevel = levelCompletionResults->levelEndStateType == 1 ? true : false;
-    if (scorePercentageConfig.multiLevelEndRank){
+    if (GET_VALUE(multiShowPercentageOnResults)){
         if (!self->rankText->get_richText()) toggleMultiResultsTableFormat(true, self);
         bool isNoFail = levelCompletionResults->gameplayModifiers->get_noFailOn0Energy() && levelCompletionResults->energy == 0;
         int totalMisses = levelCompletionResults->missedCount + levelCompletionResults->badCutsCount;
@@ -122,7 +122,7 @@ MAKE_HOOK_MATCH(Results_SetData, &ResultsTableCell::SetData, void, ResultsTableC
 }
 
 MAKE_HOOK_MATCH(ScoreRingManager_UpdateScoreText, &MultiplayerScoreRingManager::UpdateScore, void, MultiplayerScoreRingManager* self, IConnectedPlayer* playerToUpdate){
-    if (scorePercentageConfig.multiLivePercentages){
+    if (GET_VALUE(multiLivePercentages)){
         MultiplayerScoreProvider::RankedPlayer* player;
         auto* scoreRingItem = self->GetScoreRingItem(playerToUpdate->get_userId());
         if (!hasBeenNitod && playerToUpdate->get_userId() == nitoID){
@@ -165,7 +165,7 @@ MAKE_HOOK_MATCH(ScoreRingManager_UpdateScoreText, &MultiplayerScoreRingManager::
 
 MAKE_HOOK_MATCH(ScoreDiff_UpdateText, &MultiplayerScoreDiffText::AnimateScoreDiff, void, MultiplayerScoreDiffText* self, int scoreDiff){
     ScoreDiff_UpdateText(self, scoreDiff);
-    if (myTimeController != nullptr && scorePercentageConfig.multiPercentageDifference){
+    if (myTimeController != nullptr && GET_VALUE(multiPercentageDifference)){
         if(self->onPlatformText->get_enableWordWrapping()){
             self->onPlatformText->set_richText(true);
             self->onPlatformText->set_enableWordWrapping(false);
@@ -178,7 +178,7 @@ MAKE_HOOK_MATCH(ScoreDiff_UpdateText, &MultiplayerScoreDiffText::AnimateScoreDif
         std::string percentageText = " (" + posneg + Round(CalculatePercentage(maxPossibleScore, scoreDiff), 2) + "%)";
         self->onPlatformText->SetText(baseText + percentageText);
     }
-    else if (!scorePercentageConfig.multiPercentageDifference){
+    else if (!GET_VALUE(multiPercentageDifference)){
         if(!self->onPlatformText->get_enableWordWrapping()){
             self->onPlatformText->set_richText(false);
             self->onPlatformText->set_enableWordWrapping(true);

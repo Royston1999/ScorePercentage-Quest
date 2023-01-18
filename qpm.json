@@ -44,6 +44,11 @@
       "id": "bs-utils",
       "versionRange": "^0.7.0",
       "additionalData": {}
+    },
+    {
+      "id": "config-utils",
+      "versionRange": "^1.0.2",
+      "additionalData": {}
     }
   ],
   "additionalData": {}
