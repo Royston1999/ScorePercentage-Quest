@@ -34,6 +34,5 @@ extern ModInfo modInfo;
 extern BeatMapData mapData;
 extern ScorePercentageConfig scorePercentageConfig;
 extern ScorePercentage::ModalPopup* scoreDetailsUI;
-extern std::map<StringW, std::pair<std::pair<int, int>, GlobalNamespace::MultiplayerConnectedPlayerSongTimeSyncController*>> playerInfos;
 extern float modifierMultiplier;
 extern bool finishedLoading;

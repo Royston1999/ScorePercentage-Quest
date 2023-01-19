@@ -197,6 +197,7 @@ MAKE_HOOK_MATCH(ConnectedPlayer_Start, &MultiplayerConnectedPlayerSongTimeSyncCo
 MAKE_HOOK_FIND_CLASS_UNSAFE_INSTANCE(BeatmapData_Init, "", "BeatmapCallbacksController", ".ctor", void, BeatmapCallbacksController* self, BeatmapCallbacksController::InitData* initData)
 {
     BeatmapData_Init(self, initData);
+    playerInfos.clear();
     CreateScoreTimeValues(initData->beatmapData);
 }
 

@@ -242,7 +242,7 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
     }));
 
     // funny thing i wonder if anyone notices
-    if (firstActivation) CreateText(self->get_transform(), "<size=150%>KNOBHEAD</size>", Vector2(20, 20));
+    // if (firstActivation) CreateText(self->get_transform(), "<size=150%>KNOBHEAD</size>", Vector2(20, 20));
 
     // Default Info Texts
     std::string rankText = self->rankText->get_text();
@@ -327,7 +327,6 @@ MAKE_HOOK_FIND_CLASS_UNSAFE_INSTANCE(GameplayCoreSceneSetupData_ctor, "", "Gamep
     pauseCount = 0;
     if (scoreDetailsUI != nullptr) scoreDetailsUI->modal->Hide(true, nullptr);
     // multiplayer tomfoolery
-    playerInfos.clear();
     auto* modifierModel = Resources::FindObjectsOfTypeAll<GameplayModifiersModelSO*>().FirstOrDefault();
     modifierMultiplier = modifierModel->GetTotalMultiplier(modifierModel->CreateModifierParamsList(gameplayModifiers), 10);
 }

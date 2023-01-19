@@ -32,27 +32,6 @@ class ScorePercentageConfig {
 public:
     ConfigDocument beatMapData;
 
-    // // solo
-    // bool MenuHighScore;
-    // bool LevelEndRank;
-    // bool missDifference;
-    // bool ScoreDifference;
-    // bool ScorePercentageDifference;
-
-    // // popup
-    // bool uiPP;
-    // bool uiPlayCount;
-    // bool uiMissCount;
-    // bool uiBadCutCount;
-    // bool uiPauseCount;
-    // bool uiDatePlayed;
-    // bool alwaysOpen;
-
-    // // multi
-    // bool multiLevelEndRank;
-    // bool multiLivePercentages;
-    // bool multiPercentageDifference;
-
     int missCount;
     int badCutCount;
     int pauseCount;
@@ -65,8 +44,6 @@ public:
     static void AddBeatMap(rapidjson::MemoryPoolAllocator<>& allocator, rapidjson::Value& obj, std::string mapID, std::string diff, int missCount, int badCutCount, int pauseCount, std::string datePlayed);
     static void UpdateBeatMapInfo(std::string mapID, std::string diff, int missCount, int badCutCount, int pauseCount, std::string datePlayed);
     static void LoadBeatMapInfo(std::string mapID, std::string diff);
-    static void CreateDefaultConfig(ConfigDocument& config);
-    static void UpdateOldConfig(ConfigDocument& config);
     static void LoadBeatMapDataFile();
     static void WriteFile();
 };
