@@ -146,7 +146,7 @@ custom_types::Helpers::Coroutine FuckYouBeatSaviorData(LevelStatsView* self)
         co_yield reinterpret_cast<System::Collections::IEnumerator*>(WaitForSeconds::New_ctor(0.4f));
     }
     if (self->get_isActiveAndEnabled() && scoreDetailsUI->hasValidScoreData && GET_VALUE(alwaysOpen) && GET_VALUE(enablePopup) && !scoreDetailsUI->modal->isShown) {
-        scoreDetailsUI->updateInfo("lodaing...");
+        scoreDetailsUI->updateInfo("loading...");
         scoreDetailsUI->modal->Show(true, true, EasyDelegate::MakeDelegate<System::Action*>([](){
             scoreDetailsUI->updateInfo(finishedLoading ? "" : "loading...");
         }));
@@ -161,7 +161,7 @@ void toggleModalVisibility(bool value, LevelStatsView* self){
     if (!value) return scoreDetailsUI->modal->Hide(true, nullptr);
     if (beatSaviorDataInstalled) SharedCoroutineStarter::get_instance()->StartCoroutine(custom_types::Helpers::CoroutineHelper::New(FuckYouBeatSaviorData(self)));
     else if (self->get_isActiveAndEnabled() && GET_VALUE(alwaysOpen) && !scoreDetailsUI->modal->isShown) {
-        scoreDetailsUI->updateInfo("lodaing...");
+        scoreDetailsUI->updateInfo("loading...");
         scoreDetailsUI->modal->Show(true, true, EasyDelegate::MakeDelegate<System::Action*>([](){
             scoreDetailsUI->updateInfo(finishedLoading ? "" : "loading...");
         }));
