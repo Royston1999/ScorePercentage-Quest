@@ -4,7 +4,7 @@
   "info": {
     "name": "Score Percentage",
     "id": "scorepercentage",
-    "version": "3.2.0",
+    "version": "3.2.1",
     "url": null,
     "additionalData": {
       "overrideSoName": "libscorepercentage.so"
@@ -49,7 +49,12 @@
       "id": "config-utils",
       "versionRange": "^1.0.2",
       "additionalData": {}
+    },
+    {
+      "id": "scoreutils",
+      "versionRange": "^0.1.0",
+      "additionalData": {}
     }
   ],
-  "additionalData": {}
+  "workspace": null
 }
