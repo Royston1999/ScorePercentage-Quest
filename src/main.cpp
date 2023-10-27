@@ -254,7 +254,7 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
     // only update stuff if level was cleared
     if (self->levelCompletionResults->levelEndStateType == LevelCompletionResults::LevelEndStateType::Cleared)
     {
-        if (firstActivation) createDifferenceTexts(self);
+        if (!scoreDiffText || !scoreDiffText->m_CachedPtr.m_value || !rankDiffText || !rankDiffText->m_CachedPtr.m_value) createDifferenceTexts(self);
 
         resultScore = self->levelCompletionResults->modifiedScore;
         resultPercentage = CalculatePercentage(mapData.maxScore, resultScore);
