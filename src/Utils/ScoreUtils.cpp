@@ -1,5 +1,6 @@
 #include "Utils/ScoreUtils.hpp"
-// #include <codecvt>
+#include <iomanip>
+#include <sstream>
 namespace ScorePercentage::Utils{
     std::string Round (float val, int precision)
     {
@@ -56,7 +57,9 @@ namespace ScorePercentage::Utils{
         return firstLineFormatting + text + secondLineFormatting;
     }
     std::string createMissText(std::string missText, int missDifference){
-        std::string diffString = valueDifferenceString(missDifference);
+        // FONT SPACING FIX 4
+        // std::string diffString = valueDifferenceString(missDifference);
+        std::string diffString = createFixedNumberText(missDifference, true);
         std::string lineFormatting = " <size=50%>";
         std::string openParenthesis = "(";
         std::string closeParenthesis = ")";
@@ -98,5 +101,36 @@ namespace ScorePercentage::Utils{
         if (datePlayed.compare("") == 0) return header + invalid;
         std::string formatting = "<size=85%><line-height=75%>";
         return header + formatting + datePlayed;
+    }
+
+    std::string correctText(std::string originalText) {
+        std::string corrected = "";
+        std::string oopsies = "-+."; // the special characters i care about readjusting
+        for (int i = 0; i < originalText.length(); i++) {
+            if (oopsies.find(originalText[i]) != std::string::npos) {
+                std::string hmm = i == 0 ? "<cspace=-0.3em> " : "<cspace=-0.2em> "; 
+                corrected += (hmm + std::string{originalText[i]} + "</cspace>");
+                if (i < originalText.length() -1) corrected += "<cspace=-0.27em>  </cspace>";
+            }
+            else corrected += originalText[i];
+        }
+        return corrected;
+    }
+
+    std::string createFixedNumberText(float score, bool isDifferenceText) {
+        std::string differenceColor, positiveIndicator;
+        if (score >= 0)
+        {
+            differenceColor = positiveColour;
+            positiveIndicator = "+";
+        }
+        else
+        {
+            differenceColor = negativeColour;
+            positiveIndicator = "";
+        }
+        std::string corrected = correctText((isDifferenceText ? positiveIndicator : "") + (ceilf(score) != score ? Round(score, 2) : Round(score, 0)));
+        if (isDifferenceText) corrected = differenceColor + corrected;
+        return corrected;
     }
 }

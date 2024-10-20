@@ -1,29 +1,29 @@
 {
+  "version": "0.1.0",
   "sharedDir": "shared",
   "dependenciesDir": "extern",
   "info": {
     "name": "Score Percentage",
     "id": "scorepercentage",
-    "version": "3.2.2",
+    "version": "3.3.2",
     "url": null,
     "additionalData": {
       "overrideSoName": "libscorepercentage.so"
     }
   },
+  "workspace": {
+    "scripts": {},
+    "qmodIncludeDirs": [
+      "./build",
+      "./extern/libs"
+    ],
+    "qmodIncludeFiles": [],
+    "qmodOutput": "ScorePercentage"
+  },
   "dependencies": [
     {
-      "id": "codegen",
-      "versionRange": "^0.33.0",
-      "additionalData": {}
-    },
-    {
-      "id": "custom-types",
-      "versionRange": "^0.15.23",
-      "additionalData": {}
-    },
-    {
       "id": "beatsaber-hook",
-      "versionRange": "^3.14.0",
+      "versionRange": "^5.1.9",
       "additionalData": {
         "extraFiles": [
           "src/inline-hook"
@@ -31,30 +31,41 @@
       }
     },
     {
-      "id": "questui",
-      "versionRange": "^0.17.11",
+      "id": "scotland2",
+      "versionRange": "^0.1.4",
+      "additionalData": {
+        "includeQmod": false
+      }
+    },
+    {
+      "id": "bs-cordl",
+      "versionRange": "3700.*",
       "additionalData": {}
     },
     {
-      "id": "modloader",
-      "versionRange": "^1.2.3",
-      "additionalData": {}
-    },
-    {
-      "id": "bs-utils",
-      "versionRange": "^0.7.0",
+      "id": "custom-types",
+      "versionRange": "^0.17.0",
       "additionalData": {}
     },
     {
       "id": "config-utils",
-      "versionRange": "^1.0.2",
+      "versionRange": "^1.4.2",
       "additionalData": {}
     },
     {
-      "id": "scoreutils",
-      "versionRange": "^0.1.1",
+      "id": "bsml",
+      "versionRange": "^0.4.24",
+      "additionalData": {}
+    },
+    {
+      "id": "paper",
+      "versionRange": "^3.6.3",
+      "additionalData": {}
+    },
+    {
+      "id": "bs-utils",
+      "versionRange": "^0.8.2",
       "additionalData": {}
     }
-  ],
-  "workspace": null
+  ]
 }

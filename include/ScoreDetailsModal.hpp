@@ -1,20 +1,20 @@
 #pragma once
 
-#include "custom-types/shared/macros.hpp"
-#include "custom-types/shared/register.hpp"
-#include "modloader/shared/modloader.hpp"
-#include "questui/shared/BeatSaberUI.hpp"
-#include "questui/shared/QuestUI.hpp"
 #include "HMUI/ModalView.hpp"
 #include "UnityEngine/RectOffset.hpp"
 #include "Utils/ScoreUtils.hpp"
 #include "PPCalculator.hpp"
 #include "GlobalNamespace/ScoreFormatter.hpp"
-#include "GlobalNamespace/IDifficultyBeatmap.hpp"
 #include "GlobalNamespace/PlayerLevelStatsData.hpp"
 #include "GlobalNamespace/BeatmapData.hpp"
 #include "GlobalNamespace/BeatmapCharacteristicSO.hpp"
 #include "GlobalNamespace/PlayerData.hpp"
+#include "GlobalNamespace/BeatmapKey.hpp"
+#include "bsml/shared/BSML/Components/ModalView.hpp"
+#include "TMPro/TextMeshProUGUI.hpp"
+#include "UnityEngine/UI/LayoutElement.hpp"
+#include "UnityEngine/UI/Button.hpp"
+#include "UnityEngine/UI/VerticalLayoutGroup.hpp"
 
 namespace ScorePercentage{
     class ModalPopup{
@@ -32,7 +32,7 @@ namespace ScorePercentage{
             UnityEngine::UI::Button* closeButton;
             UnityEngine::UI::VerticalLayoutGroup* list;
             UnityEngine::GameObject* loadingCircle;
-            GlobalNamespace::IDifficultyBeatmap* currentMap;
+            GlobalNamespace::BeatmapKey* currentMap;
             GlobalNamespace::PlayerData* playerData;
             void updateInfo(std::string text = "");
             void setDisplayTexts(std::string text);

@@ -1,18 +1,14 @@
 #include "UI/MultiplayerSettingsViewController.hpp"
-#include "UI/SettingsFlowCoordinator.hpp"
 #include "ScorePercentageConfig.hpp"
 #include "Utils/UIUtils.hpp"
 
 DEFINE_TYPE(ScoreDetailsUI::Views, MultiplayerSettingsViewController);
 
 void ScoreDetailsUI::Views::MultiplayerSettingsViewController::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling){
-    using namespace GlobalNamespace;
-    using namespace UnityEngine;
-    using namespace QuestUI::BeatSaberUI;
-    using namespace UnityEngine::UI;
+    using namespace BSML::Lite;
 
     if (firstActivation) {
-        VerticalLayoutGroup* container = CreateVerticalLayoutGroup(get_rectTransform());
+        auto container = CreateVerticalLayoutGroup(get_rectTransform());
         UIUtils::AddHeader(get_transform(), "Multiplayer Settings", UnityEngine::Color(0.188f, 0.620f, 1.0f, 1.0f));
         auto multiPerc = AddConfigValueToggle(container->get_transform(), getScorePercentageConfig().multiShowPercentageOnResults);
         AddHoverHint(multiPerc->get_gameObject(), "displays player ranks as a percentage on the multiplayer results screen");

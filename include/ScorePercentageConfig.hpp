@@ -1,9 +1,7 @@
 #pragma once
 
-#include "beatsaber-hook/shared/utils/logging.hpp"
 #include "beatsaber-hook/shared/config/config-utils.hpp"
 #include <string>
-#include <iostream>
 #include "config-utils/shared/config-utils.hpp"
 
 DECLARE_CONFIG(ScorePercentageConfig,

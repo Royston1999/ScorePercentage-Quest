@@ -1,5 +1,6 @@
 {
     "files.associations": {
+        "*.bsml": "xml",
         "iosfwd": "cpp",
         "__config": "cpp",
         "__nullptr": "cpp",
@@ -117,6 +118,7 @@
         "__memory": "cpp",
         "format": "cpp",
         "__functional_03": "cpp",
-        "ranges": "cpp"
+        "ranges": "cpp",
+        "__verbose_abort": "cpp"
     }
 }

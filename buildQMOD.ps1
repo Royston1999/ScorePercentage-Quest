@@ -1,5 +1,6 @@
 Param(
-    [String] $qmodName="",
+    [Parameter(Mandatory=$false)]
+    [String] $qmodName="ScorePercentage",
 
     [Parameter(Mandatory=$false)]
     [Switch] $clean,
@@ -22,8 +23,6 @@ if ($help -eq $true) {
 
 $mod = "./mod.json"
 $modJson = Get-Content $mod -Raw | ConvertFrom-Json
-
-$qmodName = "ScorePercentage_v" + $modJson.version
 
 if ($qmodName -eq "")
 {
@@ -48,7 +47,7 @@ if ((-not ($cover -eq "./")) -and (Test-Path $cover))
     $filelist += ,$cover
 }
 
-foreach ($mod in $modJson.modFiles)
+foreach ($mod in $modJson.lateModFiles)
 {
     $path = "./build/" + $mod
     if (-not (Test-Path $path))

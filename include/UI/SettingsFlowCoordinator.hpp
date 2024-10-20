@@ -1,12 +1,11 @@
 #pragma once
 
 #include "custom-types/shared/macros.hpp"
-#include "custom-types/shared/register.hpp"
-#include "questui/shared/BeatSaberUI.hpp"
-#include "questui/shared/QuestUI.hpp"
 #include "SettingsViewController.hpp"
 #include "UI/ScoreDetailsUIViewController.hpp"
 #include "UI/MultiplayerSettingsViewController.hpp"
+#include "HMUI/FlowCoordinator.hpp"
+#include "HMUI/ViewController.hpp"
 #include "main.hpp"
 
 DECLARE_CLASS_CODEGEN(ScoreDetailsUI, SettingsFlowCoordinator, HMUI::FlowCoordinator,

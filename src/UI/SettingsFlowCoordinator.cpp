@@ -1,25 +1,23 @@
 #include "UI/SettingsFlowCoordinator.hpp"
 #include "UI/ScoreDetailsUIViewController.hpp"
-#include "GlobalNamespace/MenuTransitionsHelper.hpp"
-#include "HMUI/ViewController_AnimationDirection.hpp"
-#include "HMUI/ViewController_AnimationType.hpp"
+#include "bsml/shared/Helpers/creation.hpp"
 
 DEFINE_TYPE(ScoreDetailsUI, SettingsFlowCoordinator);
 
 void ScoreDetailsUI::SettingsFlowCoordinator::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling){
-    if (firstActivation) {
-        SetTitle("SCORE PERCENTAGE", HMUI::ViewController::AnimationType::Out);
+    if (!firstActivation) return;
+    SetTitle("SCORE PERCENTAGE", HMUI::ViewController::AnimationType::Out);
 
-        showBackButton = true;
+    _showBackButton = true;
 
-        settingsViewController = QuestUI::BeatSaberUI::CreateViewController<ScoreDetailsUI::Views::SettingsViewController*>();
-        scoreDetailsUIViewController = QuestUI::BeatSaberUI::CreateViewController<ScoreDetailsUI::Views::ScoreDetailsUIViewController*>();
-        multiSettingsViewController = QuestUI::BeatSaberUI::CreateViewController<ScoreDetailsUI::Views::MultiplayerSettingsViewController*>();
+    settingsViewController = BSML::Helpers::CreateViewController<ScoreDetailsUI::Views::SettingsViewController*>();
+    scoreDetailsUIViewController = BSML::Helpers::CreateViewController<ScoreDetailsUI::Views::ScoreDetailsUIViewController*>();
+    multiSettingsViewController = BSML::Helpers::CreateViewController<ScoreDetailsUI::Views::MultiplayerSettingsViewController*>();
 
-        ProvideInitialViewControllers(settingsViewController, scoreDetailsUIViewController, multiSettingsViewController, nullptr, nullptr);
-    }
+    ProvideInitialViewControllers(settingsViewController, scoreDetailsUIViewController, multiSettingsViewController, nullptr, nullptr);
+    
 }
 
 void ScoreDetailsUI::SettingsFlowCoordinator::BackButtonWasPressed(HMUI::ViewController* topViewController){
-    parentFlowCoordinator->DismissFlowCoordinator(this, HMUI::ViewController::AnimationDirection::Horizontal, nullptr, false);
+    _parentFlowCoordinator->DismissFlowCoordinator(this, HMUI::ViewController::AnimationDirection::Horizontal, nullptr, false);
 }

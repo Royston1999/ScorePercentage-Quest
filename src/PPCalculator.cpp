@@ -1,9 +1,12 @@
 #include "PPCalculator.hpp"
-#include "main.hpp"
+#include "UnityEngine/Networking/UnityWebRequest.hpp"
 #include "custom-types/shared/delegate.hpp"
+#include "UnityEngine/Networking/UnityWebRequestAsyncOperation.hpp"
+#include "UnityEngine/Networking/DownloadHandler.hpp"
 
 using namespace ScorePercentage;
 using namespace UnityEngine;
+using namespace UnityEngine::Networking;
 
 int PP_CURVE_SIZE = 0;
 std::vector<std::pair<float, float>> ppCurve;
@@ -11,16 +14,27 @@ std::vector<float> ppCurveSlopes;
 
 const std::string CURVE_DATA_URL = "https://raw.githubusercontent.com/Royston1999/ScorePercentage-Quest/main/curve.json";
 
+void SetRequestHeader(UnityWebRequest* request, const std::string& name, const std::string& value) {
+    using set_header_funcptr = UnityWebRequest::UnityWebRequestError(*)(UnityWebRequest*, StringW, StringW);
+    static set_header_funcptr icall = nullptr;
+    if (!icall) icall = (set_header_funcptr)il2cpp_functions::resolve_icall("UnityEngine.Networking.UnityWebRequest::InternalSetRequestHeader");
+    icall(request, name, value);
+}
+
 void WebUtils::SendWebRequest(std::string URL, callback_ptr callback){
-    auto request = UnityEngine::Networking::UnityWebRequest::Get(URL);
-    request->SetRequestHeader("User-Agent", std::string(ID) + " " + VERSION);
-    request->SendWebRequest()->add_completed(DLCompletedDeleg([=](auto* value){
+    auto request = UnityWebRequest::Get(URL);
+    // request->SetRequestHeader("User-Agent", std::string(ID) + " " + VERSION);
+
+    SetRequestHeader(request, "User-Agent", std::string(MOD_ID) + " " + VERSION);
+
+    request->SendWebRequest()->add_completed(custom_types::MakeDelegate<System::Action_1<AsyncOperation*>*>(std::function([=](AsyncOperation* value){
         callback(request->get_downloadHandler()->GetText());
-    }));
+        request->Dispose();
+    })));
 }
 
 void PPCalculator::PP::Initialize() {
-    // SendWebRequest(CURVE_DATA_URL, PPCalculator::PP::HandleCurveWebRequestCompleted);
+    ppCurve.clear(); ppCurveSlopes.clear();
     WebUtils::SendWebRequest(CURVE_DATA_URL, [](std::string response){
         rapidjson::Document document;
         document.Parse(response.c_str());
@@ -45,15 +59,7 @@ void PPCalculator::PP::Initialize() {
         std::string URL = document.FindMember("ppData")->value.GetString();
 
         WebUtils::SendWebRequest(URL, PPCalculator::PP::HandlePPWebRequestCompleted);
-
-        // WebUtils::SendWebRequest("https://www.example.com", [](std::string response){
-
-        //     // hello this is the code block inside of the lambda that will run once the web request completes.
-        //     // the string should be empty if the request fails
-
-        // });
-
-        });
+    });
 }
 
 

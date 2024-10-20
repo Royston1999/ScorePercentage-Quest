@@ -1,25 +1,16 @@
 #include "Utils/UIUtils.hpp"
-#include "questui/shared/BeatSaberUI.hpp"
-#include "questui/shared/CustomTypes/Components/Backgroundable.hpp"
+#include "bsml/shared/BSML/Components/Backgroundable.hpp"
+#include "bsml/shared/BSML-Lite/Creation/Layout.hpp"
+#include "bsml/shared/BSML-Lite/Creation/Text.hpp"
 
 #include "HMUI/CurvedCanvasSettingsHelper.hpp"
 #include "HMUI/CurvedTextMeshPro.hpp"
-#include "HMUI/ImageView.hpp"
-#include "HMUI/Touchable.hpp"
-#include "Polyglot/LocalizedTextMeshProUGUI.hpp"
-#include "UnityEngine/AdditionalCanvasShaderChannels.hpp"
-#include "UnityEngine/Canvas.hpp"
-#include "UnityEngine/CanvasGroup.hpp"
 #include "UnityEngine/CanvasRenderer.hpp"
 #include "UnityEngine/Object.hpp"
-#include "UnityEngine/RenderMode.hpp"
-#include "UnityEngine/Resources.hpp"
-#include "UnityEngine/Vector3.hpp"
+#include "UnityEngine/UI/LayoutElement.hpp"
 
-#include "VRUIControls/PhysicsRaycasterWithCache.hpp"
 #include "VRUIControls/VRGraphicRaycaster.hpp"
 
-#include "HMUI/ButtonStaticAnimations.hpp"
 #include "HMUI/TitleViewController.hpp"
 
 using namespace VRUIControls;
@@ -27,8 +18,8 @@ using namespace HMUI;
 using namespace UnityEngine;
 using namespace UnityEngine::Events;
 using namespace UnityEngine::UI;
-using namespace QuestUI;
-using namespace QuestUI::BeatSaberUI;
+using namespace BSML::Lite;
+using namespace BSML;
 using namespace TMPro;
 
 namespace UIUtils
@@ -56,15 +47,16 @@ namespace UIUtils
         layoutelem->set_preferredWidth(90.0f);
 
         Backgroundable* background = horizontal->get_gameObject()->AddComponent<Backgroundable*>();
-        background->ApplyBackgroundWithAlpha("title-gradient", 1.0f);
+        background->ApplyBackground("title-gradient");
+        background->ApplyAlpha(1.0f);
 
         ImageView* imageView = background->get_gameObject()->GetComponentInChildren<ImageView*>();
-        imageView->gradient = true;
-        imageView->gradientDirection = 0;
+        imageView->_gradient = true;
+        imageView->_gradientDirection = 0;
         imageView->set_color(Color::get_white());
         imageView->set_color0(leftColor);
         imageView->set_color1(rightColor);
-        imageView->curvedCanvasSettingsHelper->Reset();
+        imageView->_curvedCanvasSettingsHelper->Reset();
         return text;
     }
 }

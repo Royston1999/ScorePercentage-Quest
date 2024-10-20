@@ -1,11 +1,11 @@
 {
-    "_QPVersion": "0.1.1",
+    "_QPVersion": "1.1.0",
     "name": "${mod_name}",
     "id": "${mod_id}",
     "author": "Polly51104",
     "version": "${version}",
     "packageId": "com.beatgames.beatsaber",
-    "packageVersion": "1.28.0_4124311467",
+    "packageVersion": "1.37.0_9064817954",
     "coverImage": "Cover.jpg",
     "description": "shows extra information after completing a level",
     "dependencies": [],

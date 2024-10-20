@@ -1,17 +1,16 @@
 #include "UI/ScoreDetailsUIViewController.hpp"
-#include "UI/SettingsFlowCoordinator.hpp"
 #include "ScorePercentageConfig.hpp"
-#include "UnityEngine/RectOffset.hpp"
 #include "Utils/UIUtils.hpp"
+#include "main.hpp"
 
 DEFINE_TYPE(ScoreDetailsUI::Views, ScoreDetailsUIViewController);
-UnityEngine::UI::Toggle* ppToggle = nullptr;
-UnityEngine::UI::Toggle* playCountToggle = nullptr;
-UnityEngine::UI::Toggle* missCountToggle = nullptr;
-UnityEngine::UI::Toggle* badCutCountToggle = nullptr;
-UnityEngine::UI::Toggle* pauseCountToggle = nullptr;
-UnityEngine::UI::Toggle* datePlayedToggle = nullptr;
-UnityEngine::UI::Toggle* alwaysOnToggle = nullptr;
+BSML::ToggleSetting* ppToggle = nullptr;
+BSML::ToggleSetting* playCountToggle = nullptr;
+BSML::ToggleSetting* missCountToggle = nullptr;
+BSML::ToggleSetting* badCutCountToggle = nullptr;
+BSML::ToggleSetting* pauseCountToggle = nullptr;
+BSML::ToggleSetting* datePlayedToggle = nullptr;
+BSML::ToggleSetting* alwaysOnToggle = nullptr;
 UnityEngine::UI::VerticalLayoutGroup* scoreDetailsContainer;
 ArrayW<TMPro::TextMeshProUGUI*> toggleText;
 
@@ -25,7 +24,7 @@ void toggleToggles(bool value){
     datePlayedToggle->set_interactable(value);
     alwaysOnToggle->set_interactable(value);
     auto colour = value ? UnityEngine::Color::get_white() : UnityEngine::Color::get_gray();
-    for(int i=0; i<toggleText.Length(); i++) 
+    for(int i=0; i<toggleText.size(); i++) 
         if ((i!=0 && i%3==0) || (i!=1 && i%3==2 && toggleText[i]->get_alpha()>0))
             toggleText[i]->set_color(colour);
 }
@@ -33,11 +32,11 @@ void toggleToggles(bool value){
 void ScoreDetailsUI::Views::ScoreDetailsUIViewController::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling){
     using namespace GlobalNamespace;
     using namespace UnityEngine;
-    using namespace QuestUI::BeatSaberUI;
+    using namespace BSML::Lite;
     using namespace UnityEngine::UI;
 
     if (firstActivation) {
-        scoreDetailsContainer = QuestUI::BeatSaberUI::CreateVerticalLayoutGroup(get_transform());
+        scoreDetailsContainer = CreateVerticalLayoutGroup(get_transform());
         UIUtils::AddHeader(get_transform(), "Score Details UI Settings", UnityEngine::Color(0.941f, 0.188f, 0.188f, 1.0f));
         AddHoverHint(CreateToggle(scoreDetailsContainer->get_transform(), "Toggle Advanced Score Details", GET_VALUE(enablePopup), 
         [](bool value) {    
@@ -48,6 +47,7 @@ void ScoreDetailsUI::Views::ScoreDetailsUIViewController::DidActivate(bool first
         ppToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display PP", GET_VALUE(uiPP), 
             [](bool value) {
                 getScorePercentageConfig().uiPP.SetValue(value);
+                if (!scoreDetailsUI) return;
                 scoreDetailsUI->modalSettingsChanged = true;
             });
         
@@ -56,6 +56,7 @@ void ScoreDetailsUI::Views::ScoreDetailsUIViewController::DidActivate(bool first
         playCountToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display Play Count", GET_VALUE(uiPlayCount), 
             [](bool value) {
                 getScorePercentageConfig().uiPlayCount.SetValue(value);
+                if (!scoreDetailsUI) return;
                 scoreDetailsUI->modalSettingsChanged = true;
             });
 
@@ -64,6 +65,7 @@ void ScoreDetailsUI::Views::ScoreDetailsUIViewController::DidActivate(bool first
         missCountToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display Miss Count", GET_VALUE(uiMissCount), 
             [](bool value) {
                 getScorePercentageConfig().uiMissCount.SetValue(value);
+                if (!scoreDetailsUI) return;
                 scoreDetailsUI->modalSettingsChanged = true;
             });
 
@@ -72,6 +74,7 @@ void ScoreDetailsUI::Views::ScoreDetailsUIViewController::DidActivate(bool first
         badCutCountToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display Bad Cut Count", GET_VALUE(uiBadCutCount), 
             [](bool value) {
                 getScorePercentageConfig().uiBadCutCount.SetValue(value);
+                if (!scoreDetailsUI) return;
                 scoreDetailsUI->modalSettingsChanged = true;
             });
 
@@ -80,6 +83,7 @@ void ScoreDetailsUI::Views::ScoreDetailsUIViewController::DidActivate(bool first
         pauseCountToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display Pause Count", GET_VALUE(uiPauseCount), 
             [](bool value) {
                 getScorePercentageConfig().uiPauseCount.SetValue(value);
+                if (!scoreDetailsUI) return;
                 scoreDetailsUI->modalSettingsChanged = true;
             });
 
@@ -88,6 +92,7 @@ void ScoreDetailsUI::Views::ScoreDetailsUIViewController::DidActivate(bool first
         datePlayedToggle = CreateToggle(scoreDetailsContainer->get_transform(), "Display Date Played", GET_VALUE(uiDatePlayed), 
             [](bool value) {
                 getScorePercentageConfig().uiDatePlayed.SetValue(value);
+                if (!scoreDetailsUI) return;
                 scoreDetailsUI->modalSettingsChanged = true;
             });
 
@@ -96,6 +101,7 @@ void ScoreDetailsUI::Views::ScoreDetailsUIViewController::DidActivate(bool first
         alwaysOnToggle = CreateToggle(scoreDetailsContainer->get_transform(), "UI always open", GET_VALUE(alwaysOpen), 
             [](bool value) {
                 getScorePercentageConfig().alwaysOpen.SetValue(value);
+                if (!scoreDetailsUI) return;
                 scoreDetailsUI->modalSettingsChanged = true;
             });
 

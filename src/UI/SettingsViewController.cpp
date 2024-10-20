@@ -1,10 +1,12 @@
 #include "UI/SettingsViewController.hpp"
-#include "UI/SettingsFlowCoordinator.hpp"
+#include "bsml/shared/BSML-Lite/Creation/Misc.hpp"
+#include "bsml/shared/BSML-Lite/Creation/Layout.hpp"
+#include "ScorePercentageConfig.hpp"
 
 DEFINE_TYPE(ScoreDetailsUI::Views, SettingsViewController);
 
 void ScoreDetailsUI::Views::SettingsViewController::DidActivate(bool firstActivation, bool addedToHierarchy, bool screenSystemEnabling) {
-    using namespace QuestUI::BeatSaberUI;
+    using namespace BSML::Lite;
     if (firstActivation) {
         auto container = CreateVerticalLayoutGroup(get_rectTransform());
 
