@@ -1,5 +1,8 @@
 Param(
     [Parameter(Mandatory=$false)]
+    [Switch] $no_gimmick,
+
+    [Parameter(Mandatory=$false)]
     [Switch] $clean,
 
     [Parameter(Mandatory=$false)]
@@ -39,7 +42,7 @@ if ($help -eq $true) {
     exit
 }
 
-& $PSScriptRoot/build.ps1 -clean:$clean
+& $PSScriptRoot/build.ps1 -clean:$clean -no_gimmick:$no_gimmick
 
 if ($LASTEXITCODE -ne 0) {
     echo "Failed to build, exiting..."

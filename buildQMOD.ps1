@@ -22,6 +22,9 @@ if ($help -eq $true) {
 }
 
 $mod = "./mod.json"
+
+qpm qmod manifest
+
 $modJson = Get-Content $mod -Raw | ConvertFrom-Json
 
 if ($qmodName -eq "")
@@ -29,15 +32,6 @@ if ($qmodName -eq "")
     echo "Give a proper qmod name and try again"
     exit
 }
-
-& $PSScriptRoot/build.ps1 -clean:$clean
-
-if ($LASTEXITCODE -ne 0) {
-    echo "Failed to build, exiting..."
-    exit $LASTEXITCODE
-}
-
-echo "Creating qmod from mod.json"
 
 $filelist = @($mod)
 

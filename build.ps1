@@ -1,5 +1,8 @@
 Param(
     [Parameter(Mandatory=$false)]
+    [Switch] $no_gimmick,
+
+    [Parameter(Mandatory=$false)]
     [Switch] $clean,
 
     [Parameter(Mandatory=$false)]
@@ -30,7 +33,10 @@ if (($clean.IsPresent) -or (-not (Test-Path -Path "build")))
     $out = new-item -Path build -ItemType Directory
 } 
 
-cd build
-& cmake -G "Ninja" -DCMAKE_BUILD_TYPE="RelWithDebInfo" ../
-& cmake --build .
-cd ..
+if ($no_gimmick.IsPresent) {
+    & cmake -G "Ninja" -DCMAKE_BUILD_TYPE="RelWithDebInfo" -DNO_GIMMICK=True -B build
+}
+else {
+    & cmake -G "Ninja" -DCMAKE_BUILD_TYPE="RelWithDebInfo" -DNO_GIMMICK=False -B build
+}
+& cmake --build ./build

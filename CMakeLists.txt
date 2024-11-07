@@ -32,6 +32,12 @@ add_compile_definitions(VERSION=\"${MOD_VERSION}\")
 add_compile_definitions(MOD_ID=\"${MOD_ID}\")
 add_compile_definitions(USE_CODEGEN_FIELDS)
 
+if(NO_GIMMICK) 
+add_compile_definitions(NO_GIMMICK=1)
+else()
+add_compile_definitions(NO_GIMMICK=0)
+endif()
+
 # recursively get all src files
 RECURSE_FILES(cpp_file_list ${SOURCE_DIR}/*.cpp)
 RECURSE_FILES(c_file_list ${SOURCE_DIR}/*.c)

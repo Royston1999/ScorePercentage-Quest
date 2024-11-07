@@ -176,8 +176,10 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
         if (GET_VALUE(alwaysOpen) && scoreDetailsUI != nullptr && scoreDetailsUI->modal->_isShown) scoreDetailsUI->updateInfo();
     }));
 
+#if !NO_GIMMICK
     // funny thing i wonder if anyone notices
     if (firstActivation) BSML::Helpers::CreateText(self->get_transform(), "<size=150%>KNOBHEAD</size>", Vector2(20, 20));
+#endif
 
     // Default Info Texts
     std::string rankText = self->_rankText->get_text();
