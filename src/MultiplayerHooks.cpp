@@ -38,6 +38,7 @@ using namespace ScorePercentage::Utils;
 using namespace ScorePercentage::MapUtils;
 using namespace UnityEngine;
 
+bool isMapDataValid = false;
 std::string nitoID = "QXzRo+cwkPArBeq+0i4yxw";
 std::pair<int, int> myIndexScore;
 AudioTimeSyncController* myTimeController;
@@ -76,7 +77,7 @@ void CreateScoreTimeValues(IReadonlyBeatmapData* data){
             maxScore += (int)(p.first * multiplier * modifierMultiplier);
             p.first = maxScore;
         }
-        getLogger().info("Last Index: %i\nMax Score: %i", scoreValues.back().first, maxScore);
+        getLogger().info("Last Index: {}\nMax Score: {}", scoreValues.back().first, maxScore);
     }
 
 void toggleMultiResultsTableFormat(bool value, ResultsTableCell* cell){
@@ -198,8 +199,10 @@ MAKE_HOOK_MATCH(BeatmapData_Init, &BeatmapCallbacksController::_ctor, void, Beat
 {
     BeatmapData_Init(self, initData);
     playerInfos.clear();
-    ScorePercentage::MapUtils::updateMaxScoreFromIReadonlyBeatmapData(initData->beatmapData);
     CreateScoreTimeValues(initData->beatmapData);
+    if (!isMapDataValid) return;
+    isMapDataValid = false;
+    ScorePercentage::MapUtils::updateMaxScoreFromIReadonlyBeatmapData(initData->beatmapData);
 }
 
 void ScorePercentage::MultiplayerHooks::InstallHooks(){

@@ -33,10 +33,5 @@ if (($clean.IsPresent) -or (-not (Test-Path -Path "build")))
     $out = new-item -Path build -ItemType Directory
 } 
 
-if ($no_gimmick.IsPresent) {
-    & cmake -G "Ninja" -DCMAKE_BUILD_TYPE="RelWithDebInfo" -DNO_GIMMICK=True -B build
-}
-else {
-    & cmake -G "Ninja" -DCMAKE_BUILD_TYPE="RelWithDebInfo" -DNO_GIMMICK=False -B build
-}
-& cmake --build ./build
+Invoke-Expression "cmake -G ""Ninja"" -DCMAKE_BUILD_TYPE=""RelWithDebInfo"" -DNO_GIMMICK=$no_gimmick -B build"
+cmake --build ./build

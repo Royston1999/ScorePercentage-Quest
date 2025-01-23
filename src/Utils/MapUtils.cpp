@@ -17,10 +17,10 @@
 #include "GlobalNamespace/BeatmapDataLoader.hpp"
 #include "GlobalNamespace/EnvironmentInfoSO.hpp"
 #include "GlobalNamespace/IEnvironmentInfo.hpp"
-#include "bsml/shared/BSML/MainThreadScheduler.hpp"
 #include "GlobalNamespace/PlayerDataModel.hpp"
 #include "GlobalNamespace/BeatmapLevel.hpp"
 #include <unordered_map>
+#include "Utils/TaskCoroutine.hpp"
 
 using DiffMap = std::unordered_map<int, int>;
 using CharacMap = std::unordered_map<std::string, DiffMap>;
@@ -77,56 +77,48 @@ namespace ScorePercentage::MapUtils{
     }
 
     void updateMaxScoreFromIReadonlyBeatmapData(IReadonlyBeatmapData* beatmapData) { // this is kinda dodgy
-        int maxScore = ScoreModel::ComputeMaxMultipliedScoreForBeatmap(beatmapData);
+        int maxScore = RetrieveMaxScoreDataFromCache();
+        if (maxScore != -1) return gotMaxScoreResult(maxScore, mapData.key);
+        maxScore = ScoreModel::ComputeMaxMultipliedScoreForBeatmap(beatmapData);
         if (maxScore == -1) return;
         cacheMaxScoreData(mapData.key, maxScore);
         gotMaxScoreResult(maxScore, mapData.key);
     }
 
-    void getMaxScoreForBeatmapAsync(BeatmapKey key) {
-        static uint32_t guid = 0; // the user doesn't have over 4 billion songs right :surely:
-        static std::mutex mtx;
-
-        mtx.lock(); guid++; uint32_t localGuid = guid; mtx.unlock();
+    TaskCoroutine getMaxScoreCoro(BeatmapKey key) {
+        static std::atomic<uint32_t> guid = 0; // the user doesn't have over 4 billion songs right :surely:
+        uint32_t localGuid = ++guid;
 
         auto helper = getTransitionsHelper();
         auto playerData = getPlayerData();
         BeatmapLevel* level = helper->_beatmapLevelsModel->GetBeatmapLevel(key.levelId);
         bool isCustom = key.levelId->StartsWith("custom_level_");
-        Task_1<GlobalNamespace::LoadBeatmapLevelDataResult>* task = helper->_beatmapLevelsModel->LoadBeatmapLevelDataAsync(key.levelId, nullptr);
+        LoadBeatmapLevelDataResult levelDataResult = co_await helper->_beatmapLevelsModel->LoadBeatmapLevelDataAsync(key.levelId, nullptr);
+        if (localGuid != guid) co_return;
+        if (levelDataResult.isError) co_return gotMaxScoreResult(-1, key);
 
-        il2cpp_utils::il2cpp_aware_thread([=]() {
-            while(!task->get_IsCompleted()) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(50));           
-                std::lock_guard<std::mutex> lock(mtx);
-                if (localGuid != guid) return;
-            }
-            LoadBeatmapLevelDataResult  levelDataResult = task->get_ResultOnSuccess();
-            if (levelDataResult.isError) return;
-            IBeatmapLevelData* data = levelDataResult.beatmapLevelData;
-            Task_1<IReadonlyBeatmapData*>* mapDataTask = nullptr;
-            auto env = playerData->get_overrideEnvironmentSettings()->GetOverrideEnvironmentInfoForType(EnvironmentType::Normal).cast<IEnvironmentInfo>();
-            auto mod = playerData->get_gameplayModifiers();
-            auto set = playerData->get_playerSpecificSettings();
-            if (isCustom) { // stops lag spikes on choky levels with custom data
-                mapDataTask = helper->_beatmapDataLoader->LoadBeatmapDataAsync(data, key, level->beatsPerMinute, false, env, mod, set, false);
-            }
-            else BSML::MainThreadScheduler::Schedule([&]() { // ost needs to run on main thread cuz they do unity work in an async method :aaaaaaaaaaaa:
-                mapDataTask = helper->_beatmapDataLoader->LoadBeatmapDataAsync(data, key, level->beatsPerMinute, false, env, mod, set, false);
-            });
-            while(!mapDataTask || !mapDataTask->get_IsCompleted()) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(50));
-            }
-            IReadonlyBeatmapData* beatmapData = mapDataTask->get_ResultOnSuccess();
-            if (!beatmapData) return;
-            BSML::MainThreadScheduler::Schedule([=]() { // RUNNING THIS OFF THE MAIN THREAD CAUSES AN UNRELATED CRASH SOMEWHERE ELSE WHAT!!!!?!?!?!?!?!
-                int maxScoreOmg = ScoreModel::ComputeMaxMultipliedScoreForBeatmap(beatmapData);
-                if (maxScoreOmg != -1) cacheMaxScoreData(key, maxScoreOmg);
-                std::lock_guard<std::mutex> lock(mtx);
-                if (localGuid != guid) return;
-                gotMaxScoreResult(maxScoreOmg, key);
-            });
-        }).detach();
+        IBeatmapLevelData* levelData = levelDataResult.beatmapLevelData;
+        auto env = playerData->get_overrideEnvironmentSettings()->GetOverrideEnvironmentInfoForType(EnvironmentType::Normal).cast<IEnvironmentInfo>();
+        auto mod = playerData->get_gameplayModifiers();
+        auto set = playerData->get_playerSpecificSettings();
+        
+        if (!isCustom) co_await YieldMainThread();
+        IReadonlyBeatmapData* beatmapData = co_await helper->_beatmapDataLoader->LoadBeatmapDataAsync(levelData, key, level->beatsPerMinute, false, env, mod, set, false);
+        co_await YieldMainThread();
+
+        if (!beatmapData) co_return (localGuid == guid) ? gotMaxScoreResult(-1, key) : void();
+
+        int maxScoreOmg = ScoreModel::ComputeMaxMultipliedScoreForBeatmap(beatmapData);
+        if (maxScoreOmg != -1) cacheMaxScoreData(key, maxScoreOmg);
+
+        if (localGuid != guid) co_return;
+
+        co_return gotMaxScoreResult(maxScoreOmg, key);;
+    }
+
+    void getMaxScoreForBeatmapAsync(BeatmapKey key) {
+        getMaxScoreCoro(key);
+        return;
     }
 
     void updateMapData(BeatmapKey* beatmapKey, bool forced){

@@ -65,6 +65,7 @@ bool leaderboardFirstActivation = false;
 bool validResults;
 bool finishedLoading;
 int loadingStatus = 0;
+extern bool isMapDataValid;
 
 // Loads the config from disk using our modInfo, then returns it for use
 Configuration& getConfig() {
@@ -264,7 +265,8 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
 MAKE_HOOK_MATCH(GameplayCoreSceneSetupData_ctor, static_cast<void(GameplayCoreSceneSetupData::*)(ByRef<BeatmapKey>, BeatmapLevel*, GameplayModifiers*, PlayerSpecificSettings*, PracticeSettings*, bool, EnvironmentInfoSO*, ColorScheme*, PerformancePreset*, AudioClipAsyncLoader*, BeatmapDataLoader*, bool, bool, System::Nullable_1<RecordingToolManager::SetupData>)>(&GameplayCoreSceneSetupData::_ctor), void, GameplayCoreSceneSetupData* self, ByRef<BeatmapKey> beatmapKey, BeatmapLevel* beatmapLevel, GameplayModifiers* gameplayModifiers, PlayerSpecificSettings* playerSpecificSettings, PracticeSettings* practiceSettings, bool useTestNoteCutSoundEffects, EnvironmentInfoSO* environmentInfo, ColorScheme* colorScheme, PerformancePreset* performancePreset, AudioClipAsyncLoader* audioClipAsyncLoader, BeatmapDataLoader* beatmapDataLoader, bool enableBeatmapDataCaching, bool allowNullBeatmapLevelData, System::Nullable_1<RecordingToolManager::SetupData> recordingToolData)
 {
     GameplayCoreSceneSetupData_ctor(self, beatmapKey, beatmapLevel, gameplayModifiers, playerSpecificSettings, practiceSettings, useTestNoteCutSoundEffects, environmentInfo, colorScheme, performancePreset, audioClipAsyncLoader, beatmapDataLoader, enableBeatmapDataCaching, allowNullBeatmapLevelData, recordingToolData);
-    ScorePercentage::MapUtils::updateMapData(reinterpret_cast<BeatmapKey*>(beatmapKey.convert()));
+    ScorePercentage::MapUtils::updateBasicMapInfo(reinterpret_cast<BeatmapKey*>(beatmapKey.convert()));
+    isMapDataValid = true;
     pauseCount = 0;
     if (scoreDetailsUI != nullptr) scoreDetailsUI->modal->Hide(true, nullptr);
     // multiplayer tomfoolery
