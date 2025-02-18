@@ -138,9 +138,10 @@ MAKE_HOOK_MATCH(Menu, &LevelStatsView::ShowStats, void, LevelStatsView* self, By
         scoreDetailsUI->playerData = playerData;
 
         auto* playerLevelStatsData = playerData->GetOrCreatePlayerLevelStatsData(beatmapKey);
-
-        ScorePercentage::MapUtils::updateMapData(key, true);
+        
+        ScorePercentage::MapUtils::updateBasicMapInfo(key);
         ConfigHelper::LoadBeatMapInfo(mapData.mapID, mapData.idString);
+        ScorePercentage::MapUtils::updateMapData(key, true);
         
         bool enablePopup = GET_VALUE(enablePopup) && playerLevelStatsData->get_validScore() && playerLevelStatsData->_highScore > 0;
         toggleModalVisibility(enablePopup, self);

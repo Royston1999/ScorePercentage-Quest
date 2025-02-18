@@ -32,6 +32,7 @@
 #include "Utils/ScoreUtils.hpp"
 #include "Utils/MapUtils.hpp"
 #include "main.hpp"
+#include <type_traits>
 
 using namespace GlobalNamespace;
 using namespace ScorePercentage::Utils;
@@ -47,6 +48,7 @@ float modifierMultiplier;
 std::vector<std::pair<int, float>> scoreValues;
 
 template<class T>
+requires (std::is_convertible_v<T, BeatmapDataItem*>)
 ArrayW<T> GetBeatmapDataItems(IReadonlyBeatmapData* data){
     auto* beatmapDataItems = System::Collections::Generic::List_1<T>::New_ctor(); 
     beatmapDataItems->AddRange(reinterpret_cast<BeatmapData*>(data)->_beatmapDataItemsPerTypeAndId->GetItems<T>(0));

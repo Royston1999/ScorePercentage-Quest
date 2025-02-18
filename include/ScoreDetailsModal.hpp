@@ -1,18 +1,10 @@
 #pragma once
 
 #include "HMUI/ModalView.hpp"
-#include "UnityEngine/RectOffset.hpp"
-#include "Utils/ScoreUtils.hpp"
-#include "PPCalculator.hpp"
-#include "GlobalNamespace/ScoreFormatter.hpp"
 #include "GlobalNamespace/PlayerLevelStatsData.hpp"
-#include "GlobalNamespace/BeatmapData.hpp"
-#include "GlobalNamespace/BeatmapCharacteristicSO.hpp"
 #include "GlobalNamespace/PlayerData.hpp"
 #include "GlobalNamespace/BeatmapKey.hpp"
-#include "bsml/shared/BSML/Components/ModalView.hpp"
 #include "TMPro/TextMeshProUGUI.hpp"
-#include "UnityEngine/UI/LayoutElement.hpp"
 #include "UnityEngine/UI/Button.hpp"
 #include "UnityEngine/UI/VerticalLayoutGroup.hpp"
 

@@ -4,10 +4,13 @@
 #include "UnityEngine/Material.hpp"
 #include "UnityEngine/Rect.hpp"
 #include "System/Action.hpp"
-#include "main.hpp"
 #include "Utils/MapUtils.hpp"
 #include "Utils/EasyDelegate.hpp"
 #include "bsml/shared/BSML-Lite/Creation/Layout.hpp"
+#include "Utils/ScoreUtils.hpp"
+#include "PPCalculator.hpp"
+#include "GlobalNamespace/ScoreFormatter.hpp"
+#include "UnityEngine/RectOffset.hpp"
 
 using namespace BSML::Lite;
 using namespace UnityEngine;
@@ -125,20 +128,20 @@ void ScorePercentage::ModalPopup::updateInfo(std::string text){
     std::string pauseCountText = createTextFromBeatmapData(scorePercentageConfig.pauseCount, "Pause Count - ");
     std::string datePlayedText = createDatePlayedText(scorePercentageConfig.datePlayed);
     
-    score->set_text(scoreText);
-    maxCombo->set_text(maxComboText);
-    if (GET_VALUE(uiPlayCount)) playCount->set_text(playCountText);
-    if (GET_VALUE(uiMissCount)) missCount->set_text(missCountText);
-    if (GET_VALUE(uiBadCutCount)) badCutCount->set_text(badCutCountText);
-    if (GET_VALUE(uiPauseCount)) pauseCountGUI->set_text(pauseCountText);
-    if (GET_VALUE(uiDatePlayed)) datePlayed->set_text(datePlayedText);
+    score->text = scoreText;
+    maxCombo->text = maxComboText;
+    if (GET_VALUE(uiPlayCount)) playCount->text = playCountText;
+    if (GET_VALUE(uiMissCount)) missCount->text = missCountText;
+    if (GET_VALUE(uiBadCutCount)) badCutCount->text = badCutCountText;
+    if (GET_VALUE(uiPauseCount)) pauseCountGUI->text = pauseCountText;
+    if (GET_VALUE(uiDatePlayed)) datePlayed->text = datePlayedText;
 }
 void ScorePercentage::ModalPopup::setDisplayTexts(std::string text){
-    score->set_text(text);
-    maxCombo->set_text(text);
-    if (GET_VALUE(uiPlayCount)) playCount->set_text(text);
-    if (GET_VALUE(uiMissCount)) missCount->set_text(text);
-    if (GET_VALUE(uiBadCutCount)) badCutCount->set_text(text);
-    if (GET_VALUE(uiPauseCount)) pauseCountGUI->set_text(text);
-    if (GET_VALUE(uiDatePlayed)) datePlayed->set_text(text);
+    score->text = text;
+    maxCombo->text = text;
+    if (GET_VALUE(uiPlayCount)) playCount->text = text;
+    if (GET_VALUE(uiMissCount)) missCount->text = text;
+    if (GET_VALUE(uiBadCutCount)) badCutCount->text = text;
+    if (GET_VALUE(uiPauseCount)) pauseCountGUI->text = text;
+    if (GET_VALUE(uiDatePlayed)) datePlayed->text = text;
 }

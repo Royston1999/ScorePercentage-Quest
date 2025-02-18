@@ -19,8 +19,11 @@
 #include "GlobalNamespace/IEnvironmentInfo.hpp"
 #include "GlobalNamespace/PlayerDataModel.hpp"
 #include "GlobalNamespace/BeatmapLevel.hpp"
+#include <cstdint>
 #include <unordered_map>
 #include "Utils/TaskCoroutine.hpp"
+#include "main.hpp"
+#include "Utils/HttpUtils.hpp"
 
 using DiffMap = std::unordered_map<int, int>;
 using CharacMap = std::unordered_map<std::string, DiffMap>;
@@ -85,17 +88,13 @@ namespace ScorePercentage::MapUtils{
         gotMaxScoreResult(maxScore, mapData.key);
     }
 
-    TaskCoroutine getMaxScoreCoro(BeatmapKey key) {
-        static std::atomic<uint32_t> guid = 0; // the user doesn't have over 4 billion songs right :surely:
-        uint32_t localGuid = ++guid;
-
+    task_coroutine<IReadonlyBeatmapData*> getBeatmapDataAsync(BeatmapKey key) {
         auto helper = getTransitionsHelper();
         auto playerData = getPlayerData();
         BeatmapLevel* level = helper->_beatmapLevelsModel->GetBeatmapLevel(key.levelId);
         bool isCustom = key.levelId->StartsWith("custom_level_");
         LoadBeatmapLevelDataResult levelDataResult = co_await helper->_beatmapLevelsModel->LoadBeatmapLevelDataAsync(key.levelId, nullptr);
-        if (localGuid != guid) co_return;
-        if (levelDataResult.isError) co_return gotMaxScoreResult(-1, key);
+        if (levelDataResult.isError) co_return nullptr;
 
         IBeatmapLevelData* levelData = levelDataResult.beatmapLevelData;
         auto env = playerData->get_overrideEnvironmentSettings()->GetOverrideEnvironmentInfoForType(EnvironmentType::Normal).cast<IEnvironmentInfo>();
@@ -104,21 +103,73 @@ namespace ScorePercentage::MapUtils{
         
         if (!isCustom) co_await YieldMainThread();
         IReadonlyBeatmapData* beatmapData = co_await helper->_beatmapDataLoader->LoadBeatmapDataAsync(levelData, key, level->beatsPerMinute, false, env, mod, set, false);
+        co_return beatmapData;
+    }
+
+    task_coroutine<void> getMaxScoreCoro(BeatmapKey key) {
+        static std::atomic<uint32_t> guid = 0; // the user doesn't have over 4 billion songs right :surely:
+        uint32_t localGuid = ++guid;
+
+        IReadonlyBeatmapData* beatmapData = co_await getBeatmapDataAsync(key);
         co_await YieldMainThread();
 
-        if (!beatmapData) co_return (localGuid == guid) ? gotMaxScoreResult(-1, key) : void();
-
+        if (!beatmapData) {
+            if (localGuid != guid) co_return;
+            co_return gotMaxScoreResult(-1, key);
+        }
         int maxScoreOmg = ScoreModel::ComputeMaxMultipliedScoreForBeatmap(beatmapData);
         if (maxScoreOmg != -1) cacheMaxScoreData(key, maxScoreOmg);
 
         if (localGuid != guid) co_return;
+        co_return gotMaxScoreResult(maxScoreOmg, key);
+    }
 
-        co_return gotMaxScoreResult(maxScoreOmg, key);;
+    DECLARE_JSON_CLASS(person, 
+        NAMED_VALUE(std::string, username, "username")
+        NAMED_VALUE(int, typingSpeed, "typing_speed")
+
+        person() = default;
+        person(const std::string& u, int t) : username(u), typingSpeed(t) {}
+    )
+
+    DECLARE_JSON_CLASS(request_content, 
+        NAMED_VALUE(bool, return_error, "return_error")
+        NAMED_VALUE(person, user, "user")
+
+        request_content(bool error, const person& person) : return_error(error), user(person) {}
+    )
+
+    DECLARE_JSON_CLASS(error_content,
+        NAMED_VALUE_DEFAULT(std::string, error, "", "error")
+        NAMED_VALUE_DEFAULT(std::string, details, "", "details")
+    )
+
+    task_coroutine<void> testhttp() {
+        
+        const std::string test_url = "http://192.168.1.35:8080/test-post-endpoint-error";
+        const HttpService::HeaderMap headers = {{"User-Agent", MOD_ID " " VERSION}, {"Content-Type", "application/json"}};
+       
+        request_content successReuqest{false, {"bob bumder", 506843}};
+        HttpResponse<> sucessResponse = co_await HttpService::PostAsync(test_url, successReuqest, headers);
+        if (sucessResponse.success) {
+            getLogger().info("code: {}, content: {}", sucessResponse.responseCode, sucessResponse.content);
+        }
+        
+        request_content errorReuqest{true, {"jenna talia", 13}};
+        HttpResponse<std::vector<uint8_t>, error_content> errorResponse = co_await HttpService::PostAsync<std::vector<uint8_t>, error_content>(test_url, errorReuqest, headers);
+        if (!errorResponse.success) {
+            getLogger().info("code: {}, error: {}, reason: {}", errorResponse.responseCode, errorResponse.errorContent.error, errorResponse.errorContent.details);
+        }
+
+        auto imageBytes = co_await HttpService::GetAsync<std::vector<uint8_t>>("https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f1ec-1f1e7.png");
+
+        co_await HttpService::PostAsync("http://192.168.1.35:8080/test-post-bytes", imageBytes.content);
     }
 
     void getMaxScoreForBeatmapAsync(BeatmapKey key) {
+        getLogger().info("hi this is the main thread");
         getMaxScoreCoro(key);
-        return;
+        // testhttp();
     }
 
     void updateMapData(BeatmapKey* beatmapKey, bool forced){
@@ -126,7 +177,7 @@ namespace ScorePercentage::MapUtils{
         updateBasicMapInfo(beatmapKey);
         mapData.maxScore = RetrieveMaxScoreDataFromCache();
         if (mapData.maxScore == -1 && forced) return getMaxScoreForBeatmapAsync(*beatmapKey);
-        gotMaxScoreResult(mapData.maxScore, *beatmapKey);
+        else if (mapData.maxScore != -1) gotMaxScoreResult(mapData.maxScore, *beatmapKey);
     }
 
     void updateBasicMapInfo(BeatmapKey* beatmapKey){

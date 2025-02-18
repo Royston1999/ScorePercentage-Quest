@@ -1,29 +1,23 @@
 #pragma once
 
 #include "GlobalNamespace/BeatmapDifficulty.hpp"
-#include "beatsaber-hook/shared/config/rapidjson-utils.hpp"
+#include "Utils/TaskCoroutine.hpp"
+#include "rapidjson-macros/shared/macros.hpp"
 
-using callback_ptr = void(*)(std::string);
-
-struct RawPPData {
-    float _Easy_SoloStandard = 0.0f;
-    float _Normal_SoloStandard = 0.0f;
-    float _Hard_SoloStandard = 0.0f;
-    float _Expert_SoloStandard = 0.0f;
-    float _ExpertPlus_SoloStandard = 0.0f;
-};
+DECLARE_JSON_CLASS(RawPPData, 
+    NAMED_VALUE_DEFAULT(float, _Easy_SoloStandard, -1, "_Easy_SoloStandard")
+    NAMED_VALUE_DEFAULT(float, _Normal_SoloStandard, -1, "_Normal_SoloStandard")
+    NAMED_VALUE_DEFAULT(float, _Hard_SoloStandard, -1, "_Hard_SoloStandard")
+    NAMED_VALUE_DEFAULT(float, _Expert_SoloStandard, -1, "_Expert_SoloStandard")
+    NAMED_VALUE_DEFAULT(float, _ExpertPlus_SoloStandard, -1, "_ExpertPlus_SoloStandard")
+)
 
 namespace PPCalculator {
     namespace PP {
-        static std::unordered_map<std::string, RawPPData> index;
+        static StringKeyedMap<RawPPData> index;
 
-        void Initialize();
-        void HandlePPWebRequestCompleted(std::string text);
+        task_coroutine<void> Initialize();
         float CalculatePP(float maxPP, float accuracy);
         float BeatmapMaxPP(std::string songID, GlobalNamespace::BeatmapDifficulty difficulty);
     }
-}
-
-namespace ScorePercentage::WebUtils{
-    void SendWebRequest(std::string URL, callback_ptr callback);
 }
