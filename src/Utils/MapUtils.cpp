@@ -124,52 +124,8 @@ namespace ScorePercentage::MapUtils{
         co_return gotMaxScoreResult(maxScoreOmg, key);
     }
 
-    DECLARE_JSON_CLASS(person, 
-        NAMED_VALUE(std::string, username, "username")
-        NAMED_VALUE(int, typingSpeed, "typing_speed")
-
-        person() = default;
-        person(const std::string& u, int t) : username(u), typingSpeed(t) {}
-    )
-
-    DECLARE_JSON_CLASS(request_content, 
-        NAMED_VALUE(bool, return_error, "return_error")
-        NAMED_VALUE(person, user, "user")
-
-        request_content(bool error, const person& person) : return_error(error), user(person) {}
-    )
-
-    DECLARE_JSON_CLASS(error_content,
-        NAMED_VALUE_DEFAULT(std::string, error, "", "error")
-        NAMED_VALUE_DEFAULT(std::string, details, "", "details")
-    )
-
-    task_coroutine<void> testhttp() {
-        
-        const std::string test_url = "http://192.168.1.35:8080/test-post-endpoint-error";
-        const HttpService::HeaderMap headers = {{"User-Agent", MOD_ID " " VERSION}, {"Content-Type", "application/json"}};
-       
-        request_content successReuqest{false, {"bob bumder", 506843}};
-        HttpResponse<> sucessResponse = co_await HttpService::PostAsync(test_url, successReuqest, headers);
-        if (sucessResponse.success) {
-            getLogger().info("code: {}, content: {}", sucessResponse.responseCode, sucessResponse.content);
-        }
-        
-        request_content errorReuqest{true, {"jenna talia", 13}};
-        HttpResponse<std::vector<uint8_t>, error_content> errorResponse = co_await HttpService::PostAsync<std::vector<uint8_t>, error_content>(test_url, errorReuqest, headers);
-        if (!errorResponse.success) {
-            getLogger().info("code: {}, error: {}, reason: {}", errorResponse.responseCode, errorResponse.errorContent.error, errorResponse.errorContent.details);
-        }
-
-        auto imageBytes = co_await HttpService::GetAsync<std::vector<uint8_t>>("https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f1ec-1f1e7.png");
-
-        co_await HttpService::PostAsync("http://192.168.1.35:8080/test-post-bytes", imageBytes.content);
-    }
-
     void getMaxScoreForBeatmapAsync(BeatmapKey key) {
-        getLogger().info("hi this is the main thread");
         getMaxScoreCoro(key);
-        // testhttp();
     }
 
     void updateMapData(BeatmapKey* beatmapKey, bool forced){

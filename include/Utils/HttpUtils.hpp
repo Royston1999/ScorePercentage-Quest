@@ -12,7 +12,6 @@
 #include "System/Text/Encoding.hpp"
 #include "System/Collections/Generic/IEnumerable_1.hpp"
 #include <cstdint>
-#include <string_view>
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
@@ -139,14 +138,14 @@ struct HttpService {
             byteArray.copy_to(data, 0);
             return data;
         }
-        std::string_view string((char*)byteArray->begin(), byteArray.size());
-        if constexpr(std::is_same_v<std::decay_t<T>, std::string>) return std::string(string);
+        std::string string((char*)byteArray->begin(), byteArray.size());
+        if constexpr(std::is_same_v<std::decay_t<T>, std::string>) return string;
         else if constexpr(JSONClassDerived<T>) {
             try { return ReadFromString<T>(string); } 
             catch(JSONException e) { return {}; }
         }
         else if constexpr(JsonContainer<T>) {
-            std::string toDeserialise = "{ \"key\": " + std::string(string) + "}";
+            std::string toDeserialise = "{ \"key\": " + string + "}";
             rapidjson::Document document;
             document.Parse(toDeserialise.data());
             if(document.HasParseError()) return {};
