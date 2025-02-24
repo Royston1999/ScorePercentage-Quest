@@ -12,9 +12,6 @@
 template<typename T>
 concept CSharpTask = std::is_base_of_v<System::Threading::Tasks::Task, T>;
 
-template <CSharpTask T> 
-class CSharpTaskAwaiter;
-
 template<typename T, typename... Args>
 concept is_void_task = std::is_same_v<T, void> && sizeof...(Args) == 0;
 
@@ -27,10 +24,23 @@ concept is_single_value_task = sizeof...(Args) == 0 && !std::is_same_v<T, void>;
 template<typename T, typename... Args>
 concept is_multi_value_task = sizeof...(Args) > 0 && is_value_task<T, Args...>;
 
+template <CSharpTask T> class CSharpTaskAwaiter;
 template <typename T, typename... Args> class TaskCoroutineAwaiter;
 
 template<typename T, typename... Args> struct task_promise;
 template<> struct task_promise<void>;
+
+struct resumer_coroutine {
+    struct resumer_promise {
+        void unhandled_exception() noexcept {}
+        std::suspend_always initial_suspend() noexcept { return {}; }
+        std::suspend_never final_suspend() noexcept { return {}; }
+        resumer_coroutine get_return_object() noexcept { return { std::coroutine_handle<resumer_promise>::from_promise(*this) }; }
+        void return_void() {}
+    };
+    using promise_type = resumer_promise;
+    std::coroutine_handle<resumer_promise> handle;
+};
 
 template<typename S, typename... Types>
 requires (is_value_task<S, Types...> || is_void_task<S, Types...>)
@@ -43,37 +53,30 @@ class task_coroutine_internal {
     ~task_coroutine_internal() {
         if (!handle) return;
         handle.promise().ref_count--;
-        if (!(handle.promise().ref_count) && handle.promise().finished) { handle.destroy(); }
+        if (!(handle.promise().ref_count) && handle.done()) { handle.destroy(); }
     }
 
-    task_coroutine_internal(const task_coroutine_internal& copy) = delete;
+    task_coroutine_internal(const task_coroutine_internal& copy) : handle(copy.handle) { handle.promise().ref_count++; };
     task_coroutine_internal(task_coroutine_internal&& other) noexcept : handle(other.handle) { other.handle = nullptr; }
 
     protected:
     task_coroutine_internal(std::coroutine_handle<promise_type> handle) : handle(handle) { handle.promise().ref_count++; }
     std::coroutine_handle<promise_type> handle;
 
-    void internal_wait() { while (!handle.promise().finished) continue; }
+    void internal_wait() const { while (!handle.done()) continue; }
 };
 
 template<typename S, typename... Types>
-class task_coroutine : public task_coroutine_internal<S, Types...> {
-    public:
-    std::tuple<S, Types...> await_result() requires (is_multi_value_task<S, Types...>) {
+struct task_coroutine : public task_coroutine_internal<S, Types...> {
+    auto await_result() {
         this->internal_wait();
-        auto value = this->handle.promise().get_future().get();
-        return value;
-    }
-    S await_result() requires (is_single_value_task<S, Types...>) {
-        this->internal_wait();
-        auto value = std::get<S>(this->handle.promise().get_future().get());
-        return value;
+        if constexpr(is_single_value_task<S, Types...>) return std::get<S>(this->handle.promise().get_future().get());
+        else if constexpr(is_multi_value_task<S, Types...>) return this->handle.promise().get_future().get();
     }
 };
 
 template<>
-class task_coroutine<void> : public task_coroutine_internal<void> {
-    public:
+struct task_coroutine<void> : public task_coroutine_internal<void> {
     void wait() { this->internal_wait(); }
 };
 
@@ -90,13 +93,21 @@ struct coro_stack {
     }
 };
 
+inline resumer_coroutine resume_coroutines(coro_stack& routines) {
+    while (auto handle = routines.pop_handle()) handle.resume();
+    co_return;
+}
+
 struct suspend_conditional {
     bool ready;
     coro_stack& coros;
     constexpr bool await_ready() const noexcept { return ready; }
-    constexpr std::coroutine_handle<> await_suspend(std::coroutine_handle<>) const noexcept {
-        auto handle = coros.pop_handle();
-        return handle ? handle : std::noop_coroutine();
+    constexpr std::coroutine_handle<> await_suspend(std::coroutine_handle<> complete) const noexcept {
+        switch (coros.handles.size()) {
+            case 0: return std::noop_coroutine(); // if nothing to resume then do nothing
+            case 1: return coros.pop_handle(); // if only 1 coro to resume then pass that directly
+            default: return resume_coroutines(coros).handle; // if multiple, create resumer routine to resume them one by one 
+        }
     }
     constexpr void await_resume() const noexcept {}
 };
@@ -106,8 +117,6 @@ struct promise_internal {
     using ret_type = std::conditional_t<std::is_same_v<S, void>, int, std::tuple<S, Types...>>;
     
     int ref_count = 0;
-    std::atomic_bool is_awaited = false;
-    std::atomic_bool finished = false;
     coro_stack coros;
 
     void unhandled_exception() noexcept { exception = std::current_exception(); }
@@ -121,8 +130,7 @@ struct promise_internal {
     std::suspend_never initial_suspend() noexcept { return {}; }
     suspend_conditional final_suspend() noexcept {
         IL2CPP_CATCH_HANDLER(rethrow_if_exception();)
-        if (!is_awaited) finished = true;
-        return {!(ref_count || is_awaited), coros}; 
+        return {!ref_count && coros.handles.empty(), coros}; 
     }
     promise_internal() : future(prom.get_future()) {}
     std::shared_future<ret_type> get_future() { return future; }
@@ -154,46 +162,31 @@ struct TaskCoroutineAwaiter {
 
     std::coroutine_handle<task_promise<T, Args...>> caller_handle;
 
-    bool await_ready() { 
-        caller_handle.promise().is_awaited = true;
-        return caller_handle.done(); 
-    }
+    bool await_ready() { return caller_handle.done(); }
+
     void await_suspend(std::coroutine_handle<> handle) {
         caller_handle.promise().coros.add_handle(handle);
     }
-    void destroy() {
-        caller_handle.promise().finished = true;
-        if (caller_handle.promise().ref_count) return;
-        caller_handle.destroy();
+    
+    auto await_resume() {
+        if constexpr(is_multi_value_task<T, Args...>) return caller_handle.promise().get_future().get();
+        else if constexpr(is_single_value_task<T, Args...>) return std::get<T>(caller_handle.promise().get_future().get());
     }
-    std::tuple<T, Args...> await_resume() requires (is_multi_value_task<T, Args...>) {
-        auto value = caller_handle.promise().get_future().get();
-        destroy();
-        return value;
-    }
-    T await_resume() requires (is_single_value_task<T, Args...>) {
-        auto value = std::get<T>(caller_handle.promise().get_future().get());
-        destroy();
-        return value;
-    }
-    void await_resume() requires (is_void_task<T, Args...>) { destroy(); }
 };
 
 template <CSharpTask T>
 struct CSharpTaskAwaiter {
-    template<CSharpTask U>
-    struct TaskReturnType { using TRet = void; };
 
-    template<typename U>
-    struct TaskReturnType<System::Threading::Tasks::Task_1<U>> { using TRet = U; };
+    template<CSharpTask U> struct TaskReturnType { using TRet = void; };
+    template<typename U> struct TaskReturnType<System::Threading::Tasks::Task_1<U>> { using TRet = U; };
     
     using TRet = TaskReturnType<T>::TRet;
 
     CSharpTaskAwaiter(T* task) : _task(task) {}
 
     bool await_ready() { return _task->get_IsCompleted(); }
-    bool await_suspend(std::coroutine_handle<> handle) {
-        if (_task->get_IsCompleted()) return false;
+    
+    void await_suspend(std::coroutine_handle<> handle) {
         static_cast<System::Threading::Tasks::Task*>(_task)->ContinueWith(
             custom_types::MakeDelegate<System::Action_1<System::Threading::Tasks::Task*>*>(
                 std::function([handle](T* t) {
@@ -201,40 +194,32 @@ struct CSharpTaskAwaiter {
                 })
             )
         );
-        return true;
     }
 
     TRet await_resume() { 
-        if constexpr(!std::is_same_v<TRet, void>) {
-            return _task->get_Result();
-        }
+        if constexpr(!std::is_same_v<TRet, void>) return _task->get_Result();
     }
 
     private:
     T* _task;
 };
 
-class YieldMainThread {
-    public:
+struct YieldMainThread {
     bool await_ready() { return BSML::MainThreadScheduler::CurrentThreadIsMainThread(); }
-    bool await_suspend(std::coroutine_handle<> handle) {
-        if (BSML::MainThreadScheduler::CurrentThreadIsMainThread()) return false;
+    void await_suspend(std::coroutine_handle<> handle) {
         BSML::MainThreadScheduler::Schedule([handle]() {
             handle.resume();
         });
-        return true;
     }
     void await_resume() { }
 };
 
-class YieldNewCSharpThread {
-    public:
+struct YieldNewCSharpThread {
     bool await_ready() { return false; }
-    bool await_suspend(std::coroutine_handle<> handle) {
+    void await_suspend(std::coroutine_handle<> handle) {
         il2cpp_utils::il2cpp_aware_thread([handle]() {
             handle.resume();
         }).detach();
-        return true;
     }
     void await_resume() { }
 };
