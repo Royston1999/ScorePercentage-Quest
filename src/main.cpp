@@ -12,7 +12,8 @@
 #include "Utils/MapUtils.hpp"
 #include "Utils/EasyDelegate.hpp"
 
-#include "bs-utils/shared/utils.hpp"
+// #include "bs-utils/shared/utils.hpp"
+#include "metacore/shared/game.hpp"
 
 #include "System/DateTime.hpp"
 #include "System/Nullable_1.hpp"
@@ -39,8 +40,6 @@
 #include "GlobalNamespace/PauseMenuManager.hpp"
 #include "GlobalNamespace/LevelCompletionResults.hpp"
 
-#include "BeatSaber/PerformancePresets/PerformancePreset.hpp"
-
 #include "bsml/shared/BSML.hpp"
 #include "bsml/shared/Helpers/creation.hpp"
 #include "bsml/shared/BSML/MainThreadScheduler.hpp"
@@ -49,7 +48,6 @@ using namespace UnityEngine::UI;
 using namespace UnityEngine;
 using namespace GlobalNamespace;
 using namespace ScorePercentage::Utils;
-using namespace BeatSaber::PerformancePresets;
 
 ScorePercentageConfig scorePercentageConfig;
 modloader::ModInfo modInfo{MOD_ID, VERSION, 0};
@@ -121,7 +119,7 @@ void cacheTextAfterLocalisation(TMPro::TextMeshProUGUI* rankTitle) {
     leaderboardFirstActivation = false;
 }
 
-MAKE_HOOK_MATCH(Menu, &LevelStatsView::ShowStats, void, LevelStatsView* self, ByRef<BeatmapKey> beatmapKey, PlayerData* playerData) {
+MAKE_HOOK_MATCH(Menu, static_cast<void(LevelStatsView::*)(ByRef<BeatmapKey>, PlayerData*)>(&LevelStatsView::ShowStats), void, LevelStatsView* self, ByRef<BeatmapKey> beatmapKey, PlayerData* playerData) {
     Menu(self, beatmapKey, playerData);
     finishedLoading = false;
     validResults = false;
@@ -254,7 +252,7 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
     else self->_goodCutsPercentageText->set_text(missText);
 
     // write new highscore to file
-    if ((resultScore - mapData.currentScore) > 0 && !self->get_practice() && !isParty && bs_utils::Submission::getEnabled())
+    if ((resultScore - mapData.currentScore) > 0 && !self->get_practice() && !isParty && !MetaCore::Game::IsScoreSubmissionDisabled())
     {
         int misses = self->_levelCompletionResults->missedCount;
         int badCut = self->_levelCompletionResults->badCutsCount;
@@ -263,9 +261,33 @@ MAKE_HOOK_MATCH(Results, &ResultsViewController::DidActivate, void, ResultsViewC
     }
 }
 
-MAKE_HOOK_MATCH(GameplayCoreSceneSetupData_ctor, static_cast<void(GameplayCoreSceneSetupData::*)(ByRef<BeatmapKey>, BeatmapLevel*, GameplayModifiers*, PlayerSpecificSettings*, PracticeSettings*, bool, EnvironmentInfoSO*, ColorScheme*, PerformancePreset*, AudioClipAsyncLoader*, BeatmapDataLoader*, bool, bool, System::Nullable_1<RecordingToolManager::SetupData>)>(&GameplayCoreSceneSetupData::_ctor), void, GameplayCoreSceneSetupData* self, ByRef<BeatmapKey> beatmapKey, BeatmapLevel* beatmapLevel, GameplayModifiers* gameplayModifiers, PlayerSpecificSettings* playerSpecificSettings, PracticeSettings* practiceSettings, bool useTestNoteCutSoundEffects, EnvironmentInfoSO* environmentInfo, ColorScheme* colorScheme, PerformancePreset* performancePreset, AudioClipAsyncLoader* audioClipAsyncLoader, BeatmapDataLoader* beatmapDataLoader, bool enableBeatmapDataCaching, bool allowNullBeatmapLevelData, System::Nullable_1<RecordingToolManager::SetupData> recordingToolData)
-{
-    GameplayCoreSceneSetupData_ctor(self, beatmapKey, beatmapLevel, gameplayModifiers, playerSpecificSettings, practiceSettings, useTestNoteCutSoundEffects, environmentInfo, colorScheme, performancePreset, audioClipAsyncLoader, beatmapDataLoader, enableBeatmapDataCaching, allowNullBeatmapLevelData, recordingToolData);
+MAKE_HOOK_MATCH(GameplayCoreSceneSetupData_ctor,
+    static_cast<void(GameplayCoreSceneSetupData::*)
+    (
+        ByRef<BeatmapKey>, BeatmapLevel*, GameplayModifiers*,
+        PlayerSpecificSettings*, PracticeSettings*, bool,
+        EnvironmentInfoSO*, EnvironmentInfoSO*, ColorScheme*,
+        SettingsManager*, AudioClipAsyncLoader*, BeatmapDataLoader*,
+        BeatmapLevelsEntitlementModel*, bool, bool,
+        EnvironmentsListModel*, System::Nullable_1<RecordingToolManager_SetupData>
+    )>(&GameplayCoreSceneSetupData::_ctor),
+    void,
+    GameplayCoreSceneSetupData* self,
+    ByRef<BeatmapKey> beatmapKey, BeatmapLevel* beatmapLevel, GameplayModifiers* gameplayModifiers,
+    PlayerSpecificSettings* playerSpecificSettings, PracticeSettings* practiceSettings, bool useTestNoteCutSoundEffects,
+    EnvironmentInfoSO* targetEnvironmentInfo, EnvironmentInfoSO* originalEnvironmentInfo, ColorScheme* colorScheme,
+    SettingsManager* settingsManager, AudioClipAsyncLoader* audioClipAsyncLoader, BeatmapDataLoader* beatmapDataLoader,
+    BeatmapLevelsEntitlementModel* beatmapLevelsEntitlementModel, bool enableBeatmapDataCaching, bool allowNullBeatmapLevelData,
+    EnvironmentsListModel* environmentsListModel, System::Nullable_1<RecordingToolManager_SetupData> recordingToolData
+) {
+    GameplayCoreSceneSetupData_ctor(
+        self, beatmapKey, beatmapLevel, gameplayModifiers,
+        playerSpecificSettings, practiceSettings, useTestNoteCutSoundEffects,
+        targetEnvironmentInfo, originalEnvironmentInfo, colorScheme,
+        settingsManager, audioClipAsyncLoader, beatmapDataLoader,
+        beatmapLevelsEntitlementModel, enableBeatmapDataCaching,
+        allowNullBeatmapLevelData, environmentsListModel, recordingToolData
+    );
     ScorePercentage::MapUtils::updateBasicMapInfo(reinterpret_cast<BeatmapKey*>(beatmapKey.convert()));
     isMapDataValid = true;
     pauseCount = 0;
@@ -304,6 +326,8 @@ MAKE_HOOK_MATCH(MenuTransitionsHelper_RestartGame, &MenuTransitionsHelper::Resta
 {
     scoreDetailsUI = nullptr;
     cachedMaxRankText = nullptr;
+    scoreDiffText = nullptr;
+    rankDiffText = nullptr;
     MenuTransitionsHelper_RestartGame(self, finishCallback);
 }
 

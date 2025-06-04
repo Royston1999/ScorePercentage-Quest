@@ -16,10 +16,10 @@ std::vector<float> ppCurveSlopes;
 const std::string CURVE_DATA_URL = "https://raw.githubusercontent.com/Royston1999/ScorePercentage-Quest/main/curve.json";
 const std::unordered_map<std::string, std::string> REQUEST_HEADERS = {{"User-Agent", MOD_ID " " VERSION}};
 
-DECLARE_JSON_CLASS(PPCurveData, 
-    NAMED_VALUE(std::vector<std::vector<float>>, curve, "curve")
-    NAMED_VALUE(std::string, ppDataUrl, "ppData")
-)
+DECLARE_JSON_STRUCT(PPCurveData) {
+    NAMED_VALUE(std::vector<std::vector<float>>, curve, "curve");
+    NAMED_VALUE(std::string, ppDataUrl, "ppData");
+};
 
 task_coroutine<void> PPCalculator::PP::Initialize() {
     getLogger().info("Initialising Scoresaber PP Info");

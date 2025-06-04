@@ -19,9 +19,13 @@
 #include "rapidjson-macros/shared/auto.hpp"
 #include "rapidjson-macros/shared/serialization.hpp"
 #include "System/Net/Http/ByteArrayContent.hpp"
+#include "UnityEngine/Sprite.hpp"
+#include "bsml/shared/Helpers/utilities.hpp"
+
+#include "metacore/shared/il2cpp.hpp"
 
 template<typename T>
-concept JsonContent = JSONClassDerived<T> || JSONBasicType<T>;
+concept JsonContent = JSONStruct<T> || JSONBasicType<T>;
 
 template<typename T>
 struct isJsonContainer { static constexpr bool value = false; };
@@ -34,15 +38,16 @@ template<typename T>
 concept JsonContainer = isJsonContainer<T>::value;
 
 template<typename T>
-concept ResponseContent = JSONClassDerived<T> || std::is_same_v<std::decay_t<T>, std::vector<uint8_t>> || std::is_same_v<std::decay_t<T>, std::string> || JsonContainer<std::decay_t<T>>;
+concept ResponseContent = JSONStruct<T> || std::is_same_v<std::decay_t<T>, std::vector<uint8_t>> || std::is_same_v<std::decay_t<T>, std::string> || JsonContainer<std::decay_t<T>>;
 
 template<typename T>
-concept PostContent = JSONClassDerived<T> || std::is_same_v<std::decay_t<T>, std::vector<uint8_t>> || std::is_same_v<std::decay_t<T>, std::string>;
+concept PostContent = JSONStruct<T> || std::is_same_v<std::decay_t<T>, std::vector<uint8_t>> || std::is_same_v<std::decay_t<T>, std::string>;
 
 template<typename T = std::string, typename U = std::string>
 struct HttpResponse {
     bool success;
     int responseCode;
+    std::unordered_map<std::string, std::string> headers;
     T content;
     U errorContent;
 };
@@ -73,6 +78,20 @@ struct HttpService {
         co_return HandleResponse<T, U>(response);
     }
 
+    static task_coroutine<UnityEngine::Sprite*> GetSpriteAsync(const std::string& url, const HeaderMap& headers = {}, int timeout = 10) {
+        HttpResponseMessage* response = co_await SendAsync(BuildMessage(url, false, headers), timeout);
+        if (!response || !response->IsSuccessStatusCode) co_return nullptr;
+        co_await response->Content->LoadIntoBufferAsync();
+        co_await YieldMainThread();
+        ArrayW<uint8_t> byteArray = response->Content->buffer->ToArray();
+        auto* texture = BSML::Utilities::LoadTextureRaw(byteArray);
+        texture->hideFlags = UnityEngine::HideFlags::DontSave;
+        auto* sprite = BSML::Utilities::LoadSpriteFromTexture(texture);
+        sprite->hideFlags = UnityEngine::HideFlags::DontSave;
+        response->Dispose();
+        co_return sprite;
+    }
+
     private:
 
     static void AddHeaders(HttpRequestMessage* req, const HeaderMap& headers) {
@@ -95,9 +114,9 @@ struct HttpService {
         }
         auto content_type = headers.find("Content-Type");
         std::string content;
-        if constexpr(JSONClassDerived<S>) content = WriteToString(body);
+        if constexpr(JSONStruct<S>) content = WriteToString(body);
         else if constexpr(std::is_same_v<std::decay_t<S>, std::string>) content = body;
-        req->Content = System::Net::Http::StringContent::New_ctor(content, System::Text::Encoding::get_UTF8(), content_type != headers.end() ? content_type->second : nullptr);
+        req->Content = System::Net::Http::StringContent::New_ctor(content, System::Text::Encoding::get_UTF8(), content_type != headers.end() ? content_type->second : "");
     }
 
     template<PostContent S = std::string>
@@ -114,7 +133,9 @@ struct HttpService {
             auto* cts = System::Threading::CancellationTokenSource::New_ctor();
             auto task = get_httpClient()->SendAsync(req, cts->Token);
             cts->CancelAfter(System::TimeSpan::FromSeconds(timeout));
-            co_return co_await task;
+            auto response = co_await task;
+            req->Dispose();
+            co_return response;
         }
         catch (...) {
             co_return nullptr; 
@@ -123,9 +144,21 @@ struct HttpService {
 
     template<ResponseContent T, ResponseContent U>
     static HttpResponse<T, U> HandleResponse(HttpResponseMessage* response) {
-        if (!response) return HttpResponse<T, U>{false, 408, {}, {}};
-        if (!response->IsSuccessStatusCode) return HttpResponse<T, U>{false, response->StatusCode.value__, {}, ExtractType<U>(response)};
-        return HttpResponse<T, U>{true, response->StatusCode.value__, ExtractType<T>(response), {}};
+        if (!response) return HttpResponse<T, U>{false, 408, {}, {}, {}};
+        HttpResponse<T, U> responseObj;
+
+        if (!response->IsSuccessStatusCode) responseObj = {false, response->StatusCode.value__, {}, {}, ExtractType<U>(response)};
+        else responseObj = {true, response->StatusCode.value__, {}, ExtractType<T>(response), {}};
+        
+        for (auto [header, value] : DictionaryW(response->Headers->___headers)) {
+            responseObj.headers.insert({header, fmt::to_string(fmt::join(ListW<StringW>(value->Values), ","))});
+        }
+        for (auto [header, value] : DictionaryW(response->Content->Headers->___headers)) {
+            responseObj.headers.insert({header, fmt::to_string(fmt::join(ListW<StringW>(value->Values), ","))});
+        }
+
+        response->Dispose();
+        return responseObj;
     }
 
     template<ResponseContent T>
@@ -140,7 +173,7 @@ struct HttpService {
         }
         std::string string((char*)byteArray->begin(), byteArray.size());
         if constexpr(std::is_same_v<std::decay_t<T>, std::string>) return string;
-        else if constexpr(JSONClassDerived<T>) {
+        else if constexpr(JSONStruct<T>) {
             try { return ReadFromString<T>(string); } 
             catch(JSONException e) { return {}; }
         }

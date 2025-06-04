@@ -92,16 +92,17 @@ namespace ScorePercentage::MapUtils{
         auto playerData = getPlayerData();
         BeatmapLevel* level = helper->_beatmapLevelsModel->GetBeatmapLevel(key.levelId);
         bool isCustom = key.levelId->StartsWith("custom_level_");
-        LoadBeatmapLevelDataResult levelDataResult = co_await helper->_beatmapLevelsModel->LoadBeatmapLevelDataAsync(key.levelId, nullptr);
+        constexpr auto& ver = BeatmapLevelDataVersion::Original;
+        LoadBeatmapLevelDataResult levelDataResult = co_await helper->_beatmapLevelsModel->LoadBeatmapLevelDataAsync(key.levelId, ver, nullptr);
         if (levelDataResult.isError) co_return nullptr;
 
         IBeatmapLevelData* levelData = levelDataResult.beatmapLevelData;
         auto env = playerData->get_overrideEnvironmentSettings()->GetOverrideEnvironmentInfoForType(EnvironmentType::Normal).cast<IEnvironmentInfo>();
         auto mod = playerData->get_gameplayModifiers();
         auto set = playerData->get_playerSpecificSettings();
-        
+
         if (!isCustom) co_await YieldMainThread();
-        IReadonlyBeatmapData* beatmapData = co_await helper->_beatmapDataLoader->LoadBeatmapDataAsync(levelData, key, level->beatsPerMinute, false, env, mod, set, false);
+        IReadonlyBeatmapData* beatmapData = co_await helper->_beatmapDataLoader->LoadBeatmapDataAsync(levelData, key, level->beatsPerMinute, false, env, env, ver, mod, set, false);
         co_return beatmapData;
     }
 

@@ -1,6 +1,6 @@
 #include "MultiplayerHooks.hpp"
 
-#include "bs-utils/shared/utils.hpp"
+#include "metacore/shared/game.hpp"
 
 #include "GlobalNamespace/AudioTimeSyncController.hpp"
 #include "GlobalNamespace/GameplayModifiers.hpp"
@@ -47,14 +47,13 @@ std::map<StringW, std::pair<std::pair<int, int>, MultiplayerConnectedPlayerSongT
 float modifierMultiplier;
 std::vector<std::pair<int, float>> scoreValues;
 
-template<class T>
+template<typename T>
 requires (std::is_convertible_v<T, BeatmapDataItem*>)
-ArrayW<T> GetBeatmapDataItems(IReadonlyBeatmapData* data){
-    auto* beatmapDataItems = System::Collections::Generic::List_1<T>::New_ctor(); 
-    beatmapDataItems->AddRange(reinterpret_cast<BeatmapData*>(data)->_beatmapDataItemsPerTypeAndId->GetItems<T>(0));
-    beatmapDataItems->_items->max_length = beatmapDataItems->_size;
-    return beatmapDataItems->_items;
-}
+ListW<T> GetBeatmapDataItems(IReadonlyBeatmapData* data) {
+    auto* beatmapDataItems = System::Collections::Generic::List_1<T>::New_ctor(reinterpret_cast<BeatmapData*>(data)->GetBeatmapDataItems<T>(0));
+    // auto* beatmapDataItems = List_1<T>::New_ctor(data->GetBeatmapDataItems<T>(0));
+    return ListW<T>(beatmapDataItems);
+};
 
 void CreateScoreTimeValues(IReadonlyBeatmapData* data){
         ClearVector<std::pair<int, float>>(&scoreValues);
@@ -105,9 +104,9 @@ MAKE_HOOK_MATCH(Results_SetData, &ResultsTableCell::SetData, void, ResultsTableC
         std::string missText = levelCompletionResults->fullCombo ? "FC" : preText + "<color=red>X</color><size=65%> </size>" + std::to_string(totalMisses);
         self->_rankText->set_text(percentageText + "<size=75%>%</size>");
         self->_scoreText->set_text(missText + tab + score);
-        getLogger().info("Index Max Score: %i", myIndexScore.second);
-        getLogger().info("Index Score Percentage: %.2f", CalculatePercentage(myIndexScore.second, levelCompletionResults->modifiedScore));
-        getLogger().info("True Final Score: %.2f", CalculatePercentage(mapData.maxScore, levelCompletionResults->modifiedScore));
+        getLogger().info("Index Max Score: {}", myIndexScore.second);
+        getLogger().info("Index Score Percentage: {:.2f}", CalculatePercentage(myIndexScore.second, levelCompletionResults->modifiedScore));
+        getLogger().info("True Final Score: {:.2f}", CalculatePercentage(mapData.maxScore, levelCompletionResults->modifiedScore));
     }
     else{
         if (self->_rankText->get_richText()) toggleMultiResultsTableFormat(false, self);
@@ -115,7 +114,8 @@ MAKE_HOOK_MATCH(Results_SetData, &ResultsTableCell::SetData, void, ResultsTableC
         else self->_rankText->set_text(RankModel::GetRankName(levelCompletionResults->rank));
     }
     // write new highscore to file
-    if (connectedPlayer->get_isMe() && (levelCompletionResults->modifiedScore - mapData.currentScore > 0) && passedLevel && bs_utils::Submission::getEnabled()){
+    // if (connectedPlayer->get_isMe() && (levelCompletionResults->modifiedScore - mapData.currentScore > 0) && passedLevel && bs_utils::Submission::getEnabled()){
+    if (connectedPlayer->get_isMe() && (levelCompletionResults->modifiedScore - mapData.currentScore > 0) && passedLevel && !MetaCore::Game::IsScoreSubmissionDisabled()){
         int misses = levelCompletionResults->missedCount;
         int badCut = levelCompletionResults->badCutsCount;
         std::string currentTime = System::DateTime::get_UtcNow().ToLocalTime().ToString("D");

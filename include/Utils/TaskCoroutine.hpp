@@ -3,6 +3,7 @@
 #include "System/Threading/Tasks/Task.hpp"
 #include "System/Threading/Tasks/Task_1.hpp"
 #include "custom-types/shared/delegate.hpp"
+#include <atomic>
 #include <coroutine>
 #include <bsml/shared/BSML/MainThreadScheduler.hpp>
 #include <exception>
@@ -12,23 +13,27 @@
 template<typename T>
 concept CSharpTask = std::is_base_of_v<System::Threading::Tasks::Task, T>;
 
-template<typename T, typename... Args>
-concept is_void_task = std::is_same_v<T, void> && sizeof...(Args) == 0;
-
-template<typename T, typename... Args>
-concept is_value_task = !std::is_same_v<T, void> && !(std::is_same_v<void, Args> || ...);
-
-template<typename T, typename... Args>
-concept is_single_value_task = sizeof...(Args) == 0 && !std::is_same_v<T, void>;
-
-template<typename T, typename... Args>
-concept is_multi_value_task = sizeof...(Args) > 0 && is_value_task<T, Args...>;
-
 template <CSharpTask T> class CSharpTaskAwaiter;
-template <typename T, typename... Args> class TaskCoroutineAwaiter;
 
-template<typename T, typename... Args> struct task_promise;
+enum class TaskType {
+    INVALID, VOID, SINGLE, MULTI
+};
+
+template<typename... TArgs> concept NonVoid = !(std::is_same_v<void, TArgs> || ...);
+
+template<typename... TRetArgs> struct task_type { 
+    static constexpr TaskType type = NonVoid<TRetArgs...> ? TaskType::MULTI : TaskType::INVALID; 
+};
+template<typename T> struct task_type<T> { 
+    static constexpr TaskType type = TaskType::SINGLE; 
+};
+template<> struct task_type<void> { 
+    static constexpr TaskType type = TaskType::VOID; 
+};
+
+template<typename... TRetArgs> struct task_promise;
 template<> struct task_promise<void>;
+template <typename... TRetArgs> class TaskCoroutineAwaiter;
 
 struct resumer_coroutine {
     struct resumer_promise {
@@ -42,13 +47,14 @@ struct resumer_coroutine {
     std::coroutine_handle<resumer_promise> handle;
 };
 
-template<typename S, typename... Types>
-requires (is_value_task<S, Types...> || is_void_task<S, Types...>)
+template<typename... TRetArgs>
+requires (task_type<TRetArgs...>::type != TaskType::INVALID)
 class task_coroutine_internal {
-    template <typename T, typename... Args> friend class promise_internal;
+
+    template <typename... Args> friend class promise_internal;
 
     public:
-    using promise_type = task_promise<S, Types...>;
+    using promise_type = task_promise<TRetArgs...>;
 
     ~task_coroutine_internal() {
         if (!handle) return;
@@ -66,12 +72,12 @@ class task_coroutine_internal {
     void internal_wait() const { while (!handle.done()) continue; }
 };
 
-template<typename S, typename... Types>
-struct task_coroutine : public task_coroutine_internal<S, Types...> {
+template<typename... TRetArgs>
+struct task_coroutine : public task_coroutine_internal<TRetArgs...> {
     auto await_result() {
         this->internal_wait();
-        if constexpr(is_single_value_task<S, Types...>) return std::get<S>(this->handle.promise().get_future().get());
-        else if constexpr(is_multi_value_task<S, Types...>) return this->handle.promise().get_future().get();
+        if constexpr(task_type<TRetArgs...>::type == TaskType::SINGLE) return std::get<TRetArgs...>(this->handle.promise().get_future().get());
+        else if constexpr(task_type<TRetArgs...>::type == TaskType::MULTI) return this->handle.promise().get_future().get();
     }
 };
 
@@ -112,55 +118,67 @@ struct suspend_conditional {
     constexpr void await_resume() const noexcept {}
 };
 
-template<typename S, typename... Types>
+template<typename... TRetArgs>
 struct promise_internal {
-    using ret_type = std::conditional_t<std::is_same_v<S, void>, int, std::tuple<S, Types...>>;
-    
-    int ref_count = 0;
+
+    std::atomic_int ref_count = 0;
     coro_stack coros;
 
     void unhandled_exception() noexcept { exception = std::current_exception(); }
     void rethrow_if_exception() {
-        if (exception) {
-            std::rethrow_exception(exception);
-        }
+        if (exception) std::rethrow_exception(exception);
     }
 
-    task_coroutine<S, Types...> get_return_object() { return { std::coroutine_handle<task_promise<S, Types...>>::from_promise(*static_cast<task_promise<S, Types...>*>(this))}; }
+    task_coroutine<TRetArgs...> get_return_object() { return { std::coroutine_handle<task_promise<TRetArgs...>>::from_promise(*static_cast<task_promise<TRetArgs...>*>(this))}; }
     std::suspend_never initial_suspend() noexcept { return {}; }
     suspend_conditional final_suspend() noexcept {
         IL2CPP_CATCH_HANDLER(rethrow_if_exception();)
         return {!ref_count && coros.handles.empty(), coros}; 
     }
-    promise_internal() : future(prom.get_future()) {}
-    std::shared_future<ret_type> get_future() { return future; }
 
     template<typename T> auto await_transform(T&& t) { return std::forward<T>(t); }
-    template<typename T, typename... Args> auto await_transform(task_coroutine<T, Args...>& t) { return TaskCoroutineAwaiter<T, Args...>{t.handle}; }
-    template<typename T, typename... Args> auto await_transform(task_coroutine<T, Args...>&& t) { return TaskCoroutineAwaiter<T, Args...>{t.handle}; }
+    template<typename... Args> auto await_transform(task_coroutine<Args...>& t) { return TaskCoroutineAwaiter<Args...>{t.handle}; }
+    template<typename... Args> auto await_transform(task_coroutine<Args...>&& t) { return TaskCoroutineAwaiter<Args...>{t.handle}; }
 
-    template<CSharpTask T> auto await_transform(T* t) { return CSharpTaskAwaiter(t); }
-    
-    protected:
-    std::promise<ret_type> prom;
-    std::shared_future<ret_type> future;
+    template<CSharpTask T> auto await_transform(T* t) { return CSharpTaskAwaiter{t}; }    
+
+    template<typename... Args>
+    void* operator new(std::size_t n, const Args&...) {
+        return il2cpp_functions::gc_alloc_fixed(n);
+    }
+
+    void operator delete(void* mem) noexcept {
+        il2cpp_functions::gc_free_fixed(mem);
+    }
+
+    private:
     std::exception_ptr exception;
 };
 
-template<typename S, typename... Types>
-struct task_promise : public promise_internal<S, Types...> {
-    void return_value(const std::tuple<S, Types...>& val) { this->prom.set_value(val); }
+template<typename... TRetArgs>
+struct task_promise : public promise_internal<TRetArgs...> {
+
+    using TRet = std::tuple<TRetArgs...>;
+
+    void return_value(const TRet& val) { prom.set_value(val); }
+
+    task_promise() : future(prom.get_future()) {}
+    std::shared_future<TRet> get_future() { return future; }
+
+    private:
+    std::promise<TRet> prom;
+    std::shared_future<TRet> future;
 };
 
 template<>
 struct task_promise<void> : public promise_internal<void> {
-    void return_void() { this->prom.set_value(0); }
+    void return_void() {}
 };
 
-template <typename T, typename... Args>
+template <typename... TRetArgs>
 struct TaskCoroutineAwaiter {
 
-    std::coroutine_handle<task_promise<T, Args...>> caller_handle;
+    std::coroutine_handle<task_promise<TRetArgs...>> caller_handle;
 
     bool await_ready() { return caller_handle.done(); }
 
@@ -169,8 +187,8 @@ struct TaskCoroutineAwaiter {
     }
     
     auto await_resume() {
-        if constexpr(is_multi_value_task<T, Args...>) return caller_handle.promise().get_future().get();
-        else if constexpr(is_single_value_task<T, Args...>) return std::get<T>(caller_handle.promise().get_future().get());
+        if constexpr(task_type<TRetArgs...>::type == TaskType::SINGLE) return std::get<TRetArgs...>(caller_handle.promise().get_future().get());
+        else if constexpr(task_type<TRetArgs...>::type == TaskType::MULTI) return caller_handle.promise().get_future().get();
     }
 };
 
