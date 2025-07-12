@@ -1,15 +1,17 @@
 {
-    "_QPVersion": "1.1.0",
-    "name": "${mod_name}",
-    "id": "${mod_id}",
-    "author": "Polly51104",
-    "version": "${version}",
-    "packageId": "com.beatgames.beatsaber",
-    "packageVersion": "1.40.6_6407",
-    "coverImage": "Cover.jpg",
-    "description": "shows extra information after completing a level",
-    "dependencies": [],
-    "lateModFiles": ["${binary}"],
-    "libraryFiles": [],
-    "fileCopies": []
+  "_QPVersion": "1.1.0",
+  "name": "${mod_name}",
+  "id": "${mod_id}",
+  "author": "Polly51104",
+  "version": "${version}",
+  "packageId": "com.beatgames.beatsaber",
+  "packageVersion": "1.40.7_7060",
+  "coverImage": "Cover.jpg",
+  "description": "shows extra information after completing a level",
+  "dependencies": [],
+  "lateModFiles": [
+    "${binary}"
+  ],
+  "libraryFiles": [],
+  "fileCopies": []
 }
