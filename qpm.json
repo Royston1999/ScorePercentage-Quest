@@ -1,4 +1,5 @@
 {
+  "$schema": "https://raw.githubusercontent.com/QuestPackageManager/QPM.Package/refs/heads/main/qpm.schema.json",
   "version": "0.1.0",
   "sharedDir": "shared",
   "dependenciesDir": "extern",
@@ -12,14 +13,40 @@
     }
   },
   "workspace": {
-    "scripts": {},
+    "scripts": {
+      "build": [
+        "pwsh ./build.ps1"
+      ],
+      "clean": [
+        "pwsh ./build.ps1 -clean"
+      ],
+      "copy": [
+        "pwsh ./copy.ps1"
+      ],
+      "draft": [
+        "pwsh ./draftrelease.ps1"
+      ],
+      "log": [
+        "pwsh ./start-logging.ps1"
+      ],
+      "qmod": [
+        "qpm s build",
+        "pwsh ./buildQMOD.ps1 ScorePercentage"
+      ],
+      "restart": [
+        "pwsh ./restart-game.ps1"
+      ],
+      "stack": [
+        "pwsh ./ndk-stack.ps1"
+      ]
+    },
     "ndk": "^27.2.12479018",
     "qmodIncludeDirs": [
       "./build",
       "./extern/libs"
     ],
     "qmodIncludeFiles": [],
-    "qmodOutput": "ScorePercentage"
+    "qmodOutput": "ScorePercentage.qmod"
   },
   "dependencies": [
     {
@@ -36,7 +63,7 @@
     },
     {
       "id": "bs-cordl",
-      "versionRange": "^4006.0.0",
+      "versionRange": "4007.*",
       "additionalData": {}
     },
     {
@@ -46,22 +73,22 @@
     },
     {
       "id": "config-utils",
-      "versionRange": "^2.0.2",
+      "versionRange": "^2.0.3",
       "additionalData": {}
     },
     {
       "id": "bsml",
-      "versionRange": "^0.4.53",
+      "versionRange": "^0.4.54",
       "additionalData": {}
     },
     {
       "id": "paper2_scotland2",
-      "versionRange": "^4.6.1",
+      "versionRange": "^4.6.4",
       "additionalData": {}
     },
     {
       "id": "metacore",
-      "versionRange": "^1.3.0",
+      "versionRange": "^1.3.3",
       "additionalData": {}
     }
   ]
