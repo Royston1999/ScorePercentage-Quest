@@ -92,7 +92,7 @@ namespace ScorePercentage::MapUtils{
         auto playerData = getPlayerData();
         BeatmapLevel* level = helper->_beatmapLevelsModel->GetBeatmapLevel(key.levelId);
         bool isCustom = key.levelId->StartsWith("custom_level_");
-        constexpr auto& ver = BeatmapLevelDataVersion::Original;
+        constexpr BeatmapLevelDataVersion ver = BeatmapLevelDataVersion::Original;
         LoadBeatmapLevelDataResult levelDataResult = co_await helper->_beatmapLevelsModel->LoadBeatmapLevelDataAsync(key.levelId, ver, nullptr);
         if (levelDataResult.isError) co_return nullptr;
 
