@@ -22,7 +22,7 @@
 #include <cstdint>
 #include <unordered_map>
 #include "Utils/TaskCoroutine.hpp"
-#include "main.hpp"
+#include "GlobalNamespace/MenuTransitionsHelper.hpp"
 
 using DiffMap = std::unordered_map<int, int>;
 using CharacMap = std::unordered_map<std::string, DiffMap>;
@@ -43,12 +43,12 @@ namespace ScorePercentage::MapUtils{
         maxScoreValues[levelID][characteristic][difficulty] = maxScore;
     }
 
-    int RetrieveMaxScoreDataFromCache() {
-        auto foundLevel = maxScoreValues.find(mapData.mapID);
+    int RetrieveMaxScoreDataFromCache(BeatmapKey beatmapKey) {
+        auto foundLevel = maxScoreValues.find(beatmapKey.levelId);
         if (foundLevel == maxScoreValues.end()) return -1;
-        auto foundCharac = foundLevel->second.find(mapData.mapType);
+        auto foundCharac = foundLevel->second.find(beatmapKey.beatmapCharacteristic->get_serializedName());
         if (foundCharac == foundLevel->second.end()) return -1;
-        auto foundDiff = foundCharac->second.find((int)mapData.diff);
+        auto foundDiff = foundCharac->second.find((int)beatmapKey.difficulty);
         if (foundDiff == foundCharac->second.end()) return -1;
         int maxScore = foundDiff->second;
         return maxScore;
@@ -68,31 +68,12 @@ namespace ScorePercentage::MapUtils{
         return playerDataModel->get_playerData();
     }
 
-    void gotMaxScoreResult(int maxScore, BeatmapKey beatmapKey) {
-        float currentPercentage = ScorePercentage::Utils::CalculatePercentage(maxScore, mapData.currentScore);
-        mapData.currentPercentage = currentPercentage; mapData.maxScore = maxScore;
-        if (!scoreDetailsUI) return;
-        finishedLoading = true;
-        scoreDetailsUI->updateInfo();
-        if (mapData.currentPercentage <= 0) return;
-        scoreDetailsUI->modal->get_transform()->get_parent()->GetComponentInChildren<LevelStatsView*>()->_maxRankText->set_text(GET_VALUE(showPercentageInMenu) ? StringW(ScorePercentage::Utils::Round(std::abs(mapData.currentPercentage), 2) + "%") : RankModel::GetRankName(getPlayerData()->GetOrCreatePlayerLevelStatsData(ByRef<BeatmapKey>(beatmapKey))->_maxRank));                
-    }
-
-    void updateMaxScoreFromIReadonlyBeatmapData(IReadonlyBeatmapData* beatmapData) { // this is kinda dodgy
-        int maxScore = RetrieveMaxScoreDataFromCache();
-        if (maxScore != -1) return gotMaxScoreResult(maxScore, mapData.key);
-        maxScore = ScoreModel::ComputeMaxMultipliedScoreForBeatmap(beatmapData);
-        if (maxScore == -1) return;
-        cacheMaxScoreData(mapData.key, maxScore);
-        gotMaxScoreResult(maxScore, mapData.key);
-    }
-
     task_coroutine<IReadonlyBeatmapData*> getBeatmapDataAsync(BeatmapKey key) {
         auto helper = getTransitionsHelper();
         auto playerData = getPlayerData();
-        BeatmapLevel* level = helper->_beatmapLevelsModel->GetBeatmapLevel(key.levelId);
+        BeatmapLevel* level = helper->_beatmapLevelsModel->GetBeatmapLevel(key.levelId, false);
         bool isCustom = key.levelId->StartsWith("custom_level_");
-        constexpr BeatmapLevelDataVersion ver = BeatmapLevelDataVersion::Original;
+        BeatmapLevelDataVersion ver = BeatmapLevelDataVersion::Original;
         LoadBeatmapLevelDataResult levelDataResult = co_await helper->_beatmapLevelsModel->LoadBeatmapLevelDataAsync(key.levelId, ver, nullptr);
         if (levelDataResult.isError) co_return nullptr;
 
@@ -106,50 +87,19 @@ namespace ScorePercentage::MapUtils{
         co_return beatmapData;
     }
 
-    task_coroutine<void> getMaxScoreCoro(BeatmapKey key) {
+    task_coroutine<int> getMaxScoreAsync(BeatmapKey key) {
+        int cached = RetrieveMaxScoreDataFromCache(key);
+        if (cached != -1) co_return cached;
         static std::atomic<uint32_t> guid = 0; // the user doesn't have over 4 billion songs right :surely:
         uint32_t localGuid = ++guid;
 
         IReadonlyBeatmapData* beatmapData = co_await getBeatmapDataAsync(key);
         co_await YieldMainThread();
 
-        if (!beatmapData) {
-            if (localGuid != guid) co_return;
-            co_return gotMaxScoreResult(-1, key);
-        }
+        if (!beatmapData) co_return -1;
+
         int maxScoreOmg = ScoreModel::ComputeMaxMultipliedScoreForBeatmap(beatmapData);
         if (maxScoreOmg != -1) cacheMaxScoreData(key, maxScoreOmg);
-
-        if (localGuid != guid) co_return;
-        co_return gotMaxScoreResult(maxScoreOmg, key);
-    }
-
-    void getMaxScoreForBeatmapAsync(BeatmapKey key) {
-        getMaxScoreCoro(key);
-    }
-
-    void updateMapData(BeatmapKey* beatmapKey, bool forced){
-        if (scoreDetailsUI != nullptr) scoreDetailsUI->updateInfo("loading...");
-        updateBasicMapInfo(beatmapKey);
-        mapData.maxScore = RetrieveMaxScoreDataFromCache();
-        if (mapData.maxScore == -1 && forced) return getMaxScoreForBeatmapAsync(*beatmapKey);
-        else if (mapData.maxScore != -1) gotMaxScoreResult(mapData.maxScore, *beatmapKey);
-    }
-
-    void updateBasicMapInfo(BeatmapKey* beatmapKey){
-        auto* playerLevelStatsData = getPlayerData()->GetOrCreatePlayerLevelStatsData(ByRef<BeatmapKey>(beatmapKey));
-        int currentScore = playerLevelStatsData->_highScore;
-        std::string mapID = playerLevelStatsData->_levelID;
-        std::string mapType = playerLevelStatsData->get_beatmapCharacteristic()->get_serializedName();
-        mapData.mapID = mapID;
-        int diff = (beatmapKey->difficulty.value__ + 1) * 2 - 1;
-        mapData.currentScore = currentScore;
-        mapData.diff = beatmapKey->difficulty.value__;
-        mapData.mapType = mapType;
-        mapData.isFC = playerLevelStatsData->_fullCombo;
-        mapData.playCount = playerLevelStatsData->_playCount;
-        mapData.maxCombo = playerLevelStatsData->_maxCombo;
-        mapData.idString = mapType.compare("Standard") != 0 ? mapType + std::to_string(diff) : std::to_string(diff);
-        mapData.key = *beatmapKey;
+        co_return maxScoreOmg;
     }
 }

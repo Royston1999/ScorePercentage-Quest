@@ -51,7 +51,7 @@
   "dependencies": [
     {
       "id": "beatsaber-hook",
-      "versionRange": "^6.4.2",
+      "versionRange": "^7.0.0",
       "additionalData": {}
     },
     {
@@ -63,12 +63,12 @@
     },
     {
       "id": "bs-cordl",
-      "versionRange": "4008.*",
+      "versionRange": "4200.*",
       "additionalData": {}
     },
     {
       "id": "custom-types",
-      "versionRange": "^0.18.3",
+      "versionRange": "^0.19.0",
       "additionalData": {}
     },
     {
@@ -87,8 +87,18 @@
       "additionalData": {}
     },
     {
-      "id": "metacore",
-      "versionRange": "^1.4.0",
+      "id": "lapiz",
+      "versionRange": "^0.3.0",
+      "additionalData": {}
+    },
+    {
+      "id": "bsml",
+      "versionRange": "^0.5.1",
+      "additionalData": {}
+    },
+    {
+      "id": "flamingo",
+      "versionRange": "^1.1.2",
       "additionalData": {}
     }
   ]
